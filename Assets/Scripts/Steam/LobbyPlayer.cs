@@ -1,7 +1,6 @@
 ﻿using Steamworks;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class LobbyPlayer : NetworkBehaviour
 {
@@ -33,7 +32,6 @@ public class LobbyPlayer : NetworkBehaviour
             ulong mySteamId = SteamUser.GetSteamID().m_SteamID;
             SetSteamIdServerRPC(mySteamId );
         }
-
     }
 
     [ServerRpc]
@@ -69,7 +67,4 @@ public class LobbyPlayer : NetworkBehaviour
     {
         isReady.OnValueChanged -= OnReadyChanged;
     }
-
-    
-
 }
