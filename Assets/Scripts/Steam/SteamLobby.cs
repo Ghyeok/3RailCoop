@@ -60,7 +60,7 @@ public class SteamLobby : MonoBehaviour
         NetworkManager.Singleton.StartHost();
     }
 
-    private void OnLobbyEntered(LobbyEnter_t callback)
+    private void OnLobbyEntered(LobbyChatMsg_t callback)
     {
         // 호스트가 적어둔 주소를 HostAddress 라는 Key로 꺼내옴
         string hostAddress = SteamMatchmaking.GetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HostAddressKey);
