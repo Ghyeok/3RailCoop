@@ -1,9 +1,13 @@
 ﻿using Steamworks;
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
 public class LobbyPlayer : NetworkBehaviour
 {
+    public static event Action<LobbyPlayer> OnLobbyPlayerSpawned;
+    public static event Action<LobbyPlayer> OnLobbyPlayerDespawned;
+
     /// <summary>
     /// 준비 상태를 모든 플레이어에게 실시간으로 동기화하는 변수
     /// </summary>
@@ -26,6 +30,7 @@ public class LobbyPlayer : NetworkBehaviour
     {
         isReady.OnValueChanged -= OnReadyChanged;
         isReady.OnValueChanged += OnReadyChanged;
+        OnLobbyPlayerSpawned?.Invoke(this);
 
         if (IsOwner)
         {
@@ -65,6 +70,7 @@ public class LobbyPlayer : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        OnLobbyPlayerDespawned?.Invoke(this);
         isReady.OnValueChanged -= OnReadyChanged;
     }
 }
