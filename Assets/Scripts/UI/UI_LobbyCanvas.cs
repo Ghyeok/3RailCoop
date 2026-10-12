@@ -2,7 +2,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
-public class UI_LobbyCanvas : MonoBehaviour
+public class UI_LobbyCanvas : UI_Base
 {
     [SerializeField] private SteamLobby steamLobby;
 

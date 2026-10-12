@@ -6,10 +6,13 @@ using UnityEngine.SceneManagement;
 
 public class SteamLobby : MonoBehaviour
 {
+    [SerializeField] private UI_Popup friendInvitePopup;
+
     private const int MIN_PLAYER = 2;
     private const int MAX_PLAYER = 2;
 
     private CSteamID currentLobbyId = CSteamID.Nil;
+    private CSteamID requestedLobbyId = CSteamID.Nil;
 
     public event Action OnLobbyReady;
 
@@ -19,9 +22,14 @@ public class SteamLobby : MonoBehaviour
     protected Callback<LobbyCreated_t> lobbyCreated;
 
     /// <summary>
-    /// 스팀 아바타 이미지를 모두 내려받으면
+    /// 로비 참가 요청을 받을 콜백 변수
     /// </summary>
-    protected Callback<AvatarImageLoaded_t> avatarLoaded;
+    protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
+
+    /// <summary>
+    /// 로비 참가 요청을 받을 콜백 변수
+    /// </summary>
+    protected Callback<LobbyEnter_t> lobbyEntered;
 
     /// <summary>
     /// 호스트의 주소의 Key로 사용할 문자열
@@ -32,7 +40,17 @@ public class SteamLobby : MonoBehaviour
     private void Start()
     {
         if (!SteamBootstrap.IsSteamInitialized) return;
+
         lobbyCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
+        gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyInviteRequested);
+        lobbyEntered = Callback<LobbyEnter_t>.Create(OnLobbyEntered);
+    }
+
+    private void OnDestroy()
+    {
+        lobbyCreated?.Dispose();
+        gameLobbyJoinRequested?.Dispose();
+        lobbyEntered?.Dispose();
     }
 
     /// <summary>
@@ -79,6 +97,22 @@ public class SteamLobby : MonoBehaviour
     /// <param name="callback"></param>
     private void OnLobbyEntered(LobbyEnter_t callback)
     {
+        // 입장 성공 여부 판별
+        if (callback.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
+        {
+            Debug.LogError("입장 실패!");
+            return;
+        }
+
+        // 로비의 소유자 아이디와 접속하려는 유저 아이디가 같으면 호스트로 판정
+        var lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+        bool isMyLobby = SteamMatchmaking.GetLobbyOwner(lobbyId) == SteamUser.GetSteamID();
+        if (isMyLobby)
+        {
+            Debug.Log("호스트는 StartClient() 실행 불가");
+            return;
+        }
+
         // 호스트가 적어둔 주소를 HostAddress 라는 Key로 꺼내옴
         string hostAddress = SteamMatchmaking.GetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HostAddressKey);
 
@@ -157,7 +191,32 @@ public class SteamLobby : MonoBehaviour
             return;
         }
 
-        Debug.Log($"Overlay enabled: {SteamUtils.IsOverlayEnabled()}");
-        SteamFriends.ActivateGameOverlayInviteDialog(currentLobbyId);
+        bool isOverlayEnabled = SteamUtils.IsOverlayEnabled();
+        Debug.Log($"Overlay enabled: {isOverlayEnabled}");
+
+        // 오버레이 권한이 활성화 되어 있므면 오버레이, 아니면 인게임 팝업
+        if (isOverlayEnabled)
+        {
+            SteamFriends.ActivateGameOverlayInviteDialog(currentLobbyId);
+        }
+        else
+        {
+            var popup = UIManager.Instance.OpenPopup(friendInvitePopup);
+            UI_Popup_FriendInvite invitePopup = popup.GetComponent<UI_Popup_FriendInvite>();
+            invitePopup.Init(SendInvite);
+        }
+    }
+
+    private void SendInvite(CSteamID friendId)
+    {
+        if (!currentLobbyId.IsValid()) return;
+
+        bool sent = SteamMatchmaking.InviteUserToLobby(currentLobbyId, friendId);
+    }
+
+    private void OnLobbyInviteRequested(GameLobbyJoinRequested_t callback)
+    {
+        requestedLobbyId = callback.m_steamIDLobby;
+        SteamMatchmaking.JoinLobby(requestedLobbyId);
     }
 }
