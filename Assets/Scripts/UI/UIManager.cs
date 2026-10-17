@@ -44,13 +44,13 @@ public class UIManager : MonoBehaviour
         return popup;
     }
 
-    public void ClosePopup()
+    public void ClosePopup(UI_Popup popup)
     {
         if (popupStack.Count <= 0) return;
 
-        UI_Popup popup = popupStack.Pop();
-        if (popup != null)
+        if (popup == popupStack.Peek())
         {
+            popupStack.Pop();
             Destroy(popup.gameObject);
         }
     }
@@ -59,7 +59,7 @@ public class UIManager : MonoBehaviour
     {
         while(popupStack.Count > 0)
         {
-            ClosePopup();
+            ClosePopup(popupStack.Peek());
         }
     }
 

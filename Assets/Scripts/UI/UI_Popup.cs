@@ -6,7 +6,7 @@ public class UI_Popup : UI_Base
     {
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ClosePopup();
+            UIManager.Instance.ClosePopup(this);
         }
     }
 }
