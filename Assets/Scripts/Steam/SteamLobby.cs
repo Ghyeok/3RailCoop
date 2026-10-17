@@ -13,6 +13,7 @@ public class SteamLobby : MonoBehaviour
 
     private CSteamID currentLobbyId = CSteamID.Nil;
     private CSteamID requestedLobbyId = CSteamID.Nil;
+    private bool isCreatingLobby;
 
     public event Action OnLobbyReady;
 
@@ -34,7 +35,7 @@ public class SteamLobby : MonoBehaviour
     /// <summary>
     /// 호스트의 주소의 Key로 사용할 문자열
     /// </summary>
-    private const string HostAddressKey = "HostAddress";
+    private const string HostSteamIdKey = "HostSteamId";
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     private void Start()
@@ -42,7 +43,7 @@ public class SteamLobby : MonoBehaviour
         if (!SteamBootstrap.IsSteamInitialized) return;
 
         lobbyCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
-        gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyInviteRequested);
+        gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyJoinRequested);
         lobbyEntered = Callback<LobbyEnter_t>.Create(OnLobbyEntered);
     }
 
@@ -58,34 +59,72 @@ public class SteamLobby : MonoBehaviour
     /// </summary>
     public void CreateLobby()
     {
-        SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, MAX_PLAYER);
+        if (!SteamBootstrap.IsSteamInitialized)
+        {
+            Debug.LogWarning("Steam이 초기화되지 않았습니다.");
+            return;
+        }
+
+        var manager = NetworkManager.Singleton;
+        if (manager == null)
+        {
+            Debug.LogError("NetworkManager를 찾을 수 없습니다.");
+            return;
+        }
+
+        if (isCreatingLobby || currentLobbyId.IsValid() || manager.IsListening || manager.ShutdownInProgress)
+        {
+            Debug.LogWarning("이미 로비를 생성 중이거나 네트워크가 실행 중입니다.");
+            return;
+        }
+
+        isCreatingLobby = true;
+        if (SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, MAX_PLAYER) == SteamAPICall_t.Invalid)
+        {
+            isCreatingLobby = false;
+            Debug.LogError("Steam 로비 생성 요청에 실패했습니다.");
+        }
     }
 
     /// <summary>
-    /// 스팀 서버가 로비를 다 만들고 나서 호출해주는 함수
+    /// 스팀 서버가 로비를 다 만들고 나서 호출해주는 콜백
     /// </summary>
     /// <param name="callback"></param>
     private void OnLobbyCreated(LobbyCreated_t callback)
     {
+        isCreatingLobby = false;
+
         if(callback.m_eResult != EResult.k_EResultOK)
         {
             Debug.LogError("로비 생성 실패!");
             return;
         }
 
-        Debug.Log("스팀 로비 생성 성공!");
-
-        // 현재 로비 아이디 캐싱
-        currentLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+        var createdLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+        var manager = NetworkManager.Singleton;
+        if (manager == null || manager.IsListening || manager.ShutdownInProgress)
+        {
+            SteamMatchmaking.LeaveLobby(createdLobbyId);
+            Debug.LogError("네트워크를 시작할 수 없어 생성된 Steam 로비를 떠납니다.");
+            return;
+        }
 
         // 호스트 본인의 Steam ID를 가져와서 문자열로 변환
         string hostSteamId = SteamUser.GetSteamID().ToString();
 
         // 방금 만들어진 로비(m_ulSteamIDLobby)에 방장 주소 기록
-        SteamMatchmaking.SetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HostAddressKey, hostSteamId);       
+        SteamMatchmaking.SetLobbyData(createdLobbyId, HostSteamIdKey, hostSteamId);
 
         // 방장이 서버 겸 클라이언트로 네트워크 통신 시작
-        NetworkManager.Singleton.StartHost();
+        if (!manager.StartHost())
+        {
+            SteamMatchmaking.LeaveLobby(createdLobbyId);
+            Debug.LogError("호스트 시작에 실패해 생성된 Steam 로비를 떠납니다.");
+            return;
+        }
+
+        currentLobbyId = createdLobbyId;
+        Debug.Log("스팀 로비 생성 성공!");
 
         // 로비가 완료되면 UI 갱신
         OnLobbyReady?.Invoke();
@@ -114,9 +153,9 @@ public class SteamLobby : MonoBehaviour
         }
 
         // 호스트가 적어둔 주소를 HostAddress 라는 Key로 꺼내옴
-        string hostAddress = SteamMatchmaking.GetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HostAddressKey);
+        string hostSteamId = SteamMatchmaking.GetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HostSteamIdKey);
 
-        Debug.Log($"로비 입장 성공! 호스트 주소는 : {hostAddress}");
+        Debug.Log($"로비 입장 성공! 호스트 주소는 : {hostSteamId}");
 
         // 현재 로비 아이디 캐싱
         currentLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
@@ -132,6 +171,7 @@ public class SteamLobby : MonoBehaviour
     private bool CheckAllPlayerReady()
     {
         var clients = NetworkManager.Singleton.ConnectedClientsList;
+
         // 게임 플레이에 필요한 인원 수가 아니라면
         if (clients.Count < MIN_PLAYER)
             return false;
@@ -147,6 +187,9 @@ public class SteamLobby : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// UI 버튼에 연결할 사용자가 로비를 떠날 때 호출되는 함수
+    /// </summary>
     public void LeaveLobby()
     {
         if(SteamBootstrap.IsSteamInitialized && currentLobbyId.IsValid())
@@ -170,6 +213,7 @@ public class SteamLobby : MonoBehaviour
         if (NetworkManager.Singleton.IsServer && CheckAllPlayerReady())
         {
             NetworkManager.Singleton.SceneManager.LoadScene("InGameScene", LoadSceneMode.Single);
+            // TODO : 실제 게임 시작 로직
         }
         else
         {
@@ -177,6 +221,10 @@ public class SteamLobby : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// UI 버튼에 연결할 친구 초대 함수.
+    /// 만약 Steam Overlay가 비활성화 되어 있다면 인게임 팝업을 띄워 초대
+    /// </summary>
     public void InviteFriends()
     {
         if (!SteamBootstrap.IsSteamInitialized)
@@ -207,6 +255,10 @@ public class SteamLobby : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 친구에게 초대를 보내는 메서드
+    /// </summary>
+    /// <param name="friendId"></param>
     private void SendInvite(CSteamID friendId)
     {
         if (!currentLobbyId.IsValid()) return;
@@ -214,9 +266,13 @@ public class SteamLobby : MonoBehaviour
         bool sent = SteamMatchmaking.InviteUserToLobby(currentLobbyId, friendId);
     }
 
-    private void OnLobbyInviteRequested(GameLobbyJoinRequested_t callback)
+    /// <summary>
+    /// 초대 수락, 로비 참가 요청 콜백
+    /// </summary>
+    /// <param name="callback"></param>
+    private void OnLobbyJoinRequested(GameLobbyJoinRequested_t callback)
     {
-        requestedLobbyId = callback.m_steamIDLobby;
-        SteamMatchmaking.JoinLobby(requestedLobbyId);
+        requestedLobbyId = callback.m_steamIDLobby; // 참가 하고 싶은 로비 ID
+        SteamMatchmaking.JoinLobby(requestedLobbyId); // 해당 로비에 비동기 참가 요청
     }
 }
