@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.community.netcode.transport.steamnetworkingsockets": "https://github.com/Unity-Technologies/multiplayer-community-contributions.git?path=/Transports/com.community.netcode.transport.steamnetworkingsockets",
     "com.rlabrecque.steamworks.net": "https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.ai.navigation": "2.0.10",
