@@ -12,6 +12,8 @@ public class ObstacleSpawner : MonoBehaviour
     [SerializeField, Min(0.01f)] private float cycleIntervalSeconds = 1f;
     [SerializeField] private List<ObstaclePattern> patterns = new List<ObstaclePattern>();
 
+    private readonly List<int> lanesBuffer = new List<int>();
+
     private void Start()
     {
         if (obstaclePrefab == null || forwardReference == null)
@@ -37,38 +39,12 @@ public class ObstacleSpawner : MonoBehaviour
 
             foreach (int cycle in pattern.Cycles)
             {
-                if (!IsValidCycle(cycle))
+                if (!ObstacleCycle.IsValid(cycle))
                 {
                     Debug.LogError($"유효하지 않은 장애물 사이클: {cycle} ({pattern.name})", pattern);
                     return false;
                 }
             }
-        }
-
-        return true;
-    }
-
-    private bool IsValidCycle(int cycle)
-    {
-        // 음수 제외
-        if (cycle < 0) return false;
-
-        HashSet<int> usedLanes = new HashSet<int>();
-
-        // 각 Lane 번호를 차례대로 꺼냄
-        while (cycle > 0)
-        {
-            int lane = cycle % 10;
-
-            // 1 ~ 3번 Lane만 허용
-            if (lane < 1 || lane > 3)
-                return false;
-
-            // 이미 들어 있는 Lane이라면 중복
-            if (!usedLanes.Add(lane))
-                return false;
-
-            cycle /= 10;
         }
 
         return true;
@@ -93,12 +69,17 @@ public class ObstacleSpawner : MonoBehaviour
         float spawnZ = forwardReference.position.z + spawnDistance;
         float spawnY = transform.position.y;
 
-        while (cycle > 0)
+        // 시작 시 검증한 뒤 Inspector에서 패턴을 바꾼 경우를 대비한다.
+        if (!ObstacleCycle.TryGetLanes(cycle, lanesBuffer))
         {
-            int lane = cycle % 10;
-            float spawnX = centerLaneX + (lane - 2) * laneSpacing;
+            Debug.LogError($"유효하지 않은 장애물 사이클이라 생성하지 않습니다: {cycle}", this);
+            return;
+        }
+
+        foreach (int lane in lanesBuffer)
+        {
+            float spawnX = ObstacleCycle.GetLaneX(lane, centerLaneX, laneSpacing);
             SpawnObstacle(spawnX, spawnY, spawnZ);
-            cycle /= 10;
         }
     }
 
