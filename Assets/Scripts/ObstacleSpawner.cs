@@ -13,6 +13,8 @@ public class ObstacleSpawner : MonoBehaviour
     [SerializeField] private List<ObstaclePattern> patterns = new List<ObstaclePattern>();
 
     private readonly List<int> lanesBuffer = new List<int>();
+    private readonly List<GameObject> spawnedObstacles = new List<GameObject>();
+    private bool canSpawn;
 
     private void Start()
     {
@@ -24,7 +26,33 @@ public class ObstacleSpawner : MonoBehaviour
 
         if (!ValidatePatterns()) return;
 
+        canSpawn = true;
         StartCoroutine(SpawnPatterns());
+    }
+
+    /// <summary>
+    /// 남은 사이클 생성을 멈춘다 (게임 오버·클리어).
+    /// </summary>
+    public void StopSpawning()
+    {
+        StopAllCoroutines();
+    }
+
+    /// <summary>
+    /// 생성한 장애물을 모두 지우고 첫 패턴부터 다시 생성한다 (재시도).
+    /// </summary>
+    public void Restart()
+    {
+        StopAllCoroutines();
+
+        foreach (GameObject obstacle in spawnedObstacles)
+        {
+            if (obstacle != null) Destroy(obstacle);
+        }
+
+        spawnedObstacles.Clear();
+
+        if (canSpawn) StartCoroutine(SpawnPatterns());
     }
 
     private bool ValidatePatterns()
@@ -85,6 +113,6 @@ public class ObstacleSpawner : MonoBehaviour
 
     private void SpawnObstacle(float x, float y, float z)
     {
-        Instantiate(obstaclePrefab, new Vector3(x, y, z), obstaclePrefab.transform.rotation);
+        spawnedObstacles.Add(Instantiate(obstaclePrefab, new Vector3(x, y, z), obstaclePrefab.transform.rotation));
     }
 }

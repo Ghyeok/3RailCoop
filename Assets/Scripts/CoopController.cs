@@ -30,8 +30,13 @@ public class CoopController : MonoBehaviour
     [SerializeField, Min(0f)] private float moveCooldownSeconds = 0.2f;
 
     private CoopLanes lanes;
+    private Vector3 player1StartPosition;
+    private Vector3 player2StartPosition;
 
     public float ForwardSpeed => forwardSpeed;
+
+    /// <summary>시작 위치에서 실제로 전진한 거리. 설정 오류로 시작하지 못했으면 0이다.</summary>
+    public float TravelledDistance => lanes == null ? 0f : player1.position.z - player1StartPosition.z;
 
     private void Awake()
     {
@@ -42,17 +47,31 @@ public class CoopController : MonoBehaviour
             return;
         }
 
-        int startLane1 = LaneFromX(player1.position.x);
-        int startLane2 = LaneFromX(player2.position.x);
-        if (startLane1 == startLane2)
+        int player1StartLane = LaneFromX(player1.position.x);
+        int player2StartLane = LaneFromX(player2.position.x);
+        if (player1StartLane == player2StartLane)
         {
             Debug.LogError("두 플레이어는 서로 다른 레일에서 시작해야 합니다.", this);
             enabled = false;
             return;
         }
 
-        lanes = new CoopLanes(startLane1, startLane2);
+        lanes = new CoopLanes(player1StartLane, player2StartLane);
         AlignPlayers();
+        player1StartPosition = player1.position;
+        player2StartPosition = player2.position;
+    }
+
+    /// <summary>
+    /// 두 플레이어 위치와 합체 상태·분리 기록·쿨타임을 스테이지 시작 상태로 되돌린다 (재시도).
+    /// </summary>
+    public void ResetToStart()
+    {
+        if (lanes == null) return;
+
+        player1.position = player1StartPosition;
+        player2.position = player2StartPosition;
+        lanes.ResetToStart();
     }
 
     private void Update()
