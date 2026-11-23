@@ -8,8 +8,10 @@ public class CoopLanes
     public const int CENTER_LANE = 2;
     public const int RIGHT_LANE = 3;
 
-    private readonly LaneMovement player1;
-    private readonly LaneMovement player2;
+    private readonly int player1StartLane;
+    private readonly int player2StartLane;
+    private LaneMovement player1;
+    private LaneMovement player2;
 
     // 이번 합체를 위해 다른 레일에서 들어온 플레이어의 출발 레일. 원래 그 레일에 있던 플레이어는 null.
     private int? player1EntryLane;
@@ -21,12 +23,25 @@ public class CoopLanes
 
     public CoopLanes(int player1StartLane, int player2StartLane)
     {
-        player1 = new LaneMovement(player1StartLane, LEFT_LANE, RIGHT_LANE);
-        player2 = new LaneMovement(player2StartLane, LEFT_LANE, RIGHT_LANE);
+        this.player1StartLane = player1StartLane;
+        this.player2StartLane = player2StartLane;
+        ResetToStart();
 
         // 출발 레일 기록 없이 합체한 상태는 분리 목적지를 정할 수 없다.
         if (player1.CurrentLane == player2.CurrentLane)
             throw new System.ArgumentException("두 플레이어는 서로 다른 레일에서 시작해야 합니다.");
+    }
+
+    /// <summary>
+    /// 시작 레일, 합체 해제, 분리 기록 삭제, 쿨타임 해제 상태로 되돌린다 (재시도).
+    /// </summary>
+    public void ResetToStart()
+    {
+        player1 = new LaneMovement(player1StartLane, LEFT_LANE, RIGHT_LANE);
+        player2 = new LaneMovement(player2StartLane, LEFT_LANE, RIGHT_LANE);
+        player1EntryLane = null;
+        player2EntryLane = null;
+        IsMerged = false;
     }
 
     /// <summary>

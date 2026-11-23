@@ -70,6 +70,37 @@ public class ObstacleSpawnerTests
         Assert.AreEqual(0, SpawnedPositions().Count);
     }
 
+    [UnityTest]
+    public IEnumerator Restart_ClearsSpawnedAndStartsFromFirstCycle()
+    {
+        ObstacleSpawner spawner = CreateSpawner(new List<int> { 1, 2, 3 }, 0.1f);
+        spawner.gameObject.SetActive(true);
+        yield return new WaitForSeconds(0.25f);
+        Assert.Greater(SpawnedPositions().Count, 1);
+
+        spawner.StopSpawning();
+        spawner.Restart();
+        yield return null;
+
+        // 이전 장애물은 지워지고 첫 사이클(1번 레일)만 다시 생성된다.
+        List<Vector3> positions = SpawnedPositions();
+        Assert.AreEqual(1, positions.Count);
+        Assert.AreEqual(CENTER_LANE_X - LANE_SPACING, positions[0].x, 0.001f);
+    }
+
+    [UnityTest]
+    public IEnumerator StopSpawning_StopsRemainingCycles()
+    {
+        ObstacleSpawner spawner = CreateSpawner(new List<int> { 1, 2, 3 }, 0.1f);
+        spawner.gameObject.SetActive(true);
+        yield return null;
+
+        spawner.StopSpawning();
+        yield return new WaitForSeconds(0.35f);
+
+        Assert.AreEqual(1, SpawnedPositions().Count);
+    }
+
     private ObstacleSpawner CreateSpawner(List<int> cycles, float interval)
     {
         var prefab = new GameObject(OBSTACLE_NAME);

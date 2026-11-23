@@ -161,6 +161,28 @@ public class CoopLanesTests
     }
 
     [Test]
+    public void ResetToStart_RestoresStartLanesMergeRecordAndCooldown()
+    {
+        // 2번 레일에서 합체한 상태(Player1이 1번에서 진입)를 만든다.
+        var lanes = new CoopLanes(1, 3);
+        lanes.Step(0f, 0, -1, false, false, COOLDOWN);
+        lanes.Step(1f, 1, 0, false, false, COOLDOWN);
+        Assert.IsTrue(lanes.IsMerged);
+
+        lanes.ResetToStart();
+
+        Assert.IsFalse(lanes.IsMerged);
+        AssertLanes(lanes, 1, 3);
+
+        // 쿨타임이 풀려 바로 이동할 수 있고, 새 합체는 이전 분리 기록을 쓰지 않는다.
+        lanes.Step(1f, 0, -1, false, false, COOLDOWN);
+        lanes.Step(1f, 1, 0, false, false, COOLDOWN);
+        Assert.IsTrue(lanes.IsMerged);
+        lanes.Step(2f, 0, 0, true, false, COOLDOWN);
+        AssertLanes(lanes, 1, 3);
+    }
+
+    [Test]
     public void SplitInput_IgnoredWhenNotMerged()
     {
         var lanes = new CoopLanes(1, 3);

@@ -20,6 +20,21 @@ public class QuarterViewCameraController : MonoBehaviour
     [Tooltip("ConstantSpeed 모드에서 전진 속도를 가져올 대상. 플레이어와 같은 속도를 쓴다.")]
     [SerializeField] private CoopController forwardSource;
 
+    private Vector3 startPosition;
+
+    private void Awake()
+    {
+        startPosition = transform.position;
+    }
+
+    /// <summary>
+    /// 스테이지 시작 위치로 되돌린다 (재시도).
+    /// </summary>
+    public void ResetToStart()
+    {
+        transform.position = startPosition;
+    }
+
     private void Start()
     {
         if (movementMode == MovementMode.ConstantSpeed && forwardSource == null)
