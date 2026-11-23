@@ -66,8 +66,3 @@ Notion에서는 개발 과정의 각 작업을 제목이 있는 토글로 구성
 - [4. 게임 초대 수락, 로비 접속](https://app.notion.com/p/3f555d93ee23800aa888c8a1633b458c)
 - [5. NGO 연결 설정 및 테스트](https://app.notion.com/p/3fc55d93ee23809eb3a2c8a78af17708)
 - [6. Steam 로비 예외 처리](https://app.notion.com/p/40755d93ee2381c6afabc835a7b77f3d)
-
-- [08. 통합 분석 도구와 현재 작업 현황 — 2026-11-13](https://app.notion.com/p/41755d93ee238167b771e2c97724080e)
-- [09. 정적 카탈로그 탐색·출처와 변경 비교](https://app.notion.com/p/41755d93ee23811e89e3d4e00c244d39)
-- [10. 경기 수집 실패 진단과 불완전 수신 기록](https://app.notion.com/p/41755d93ee23810db84fddd5e9df3ad9)
-- [11. 경기 종료 조합과 조건별 재집계](https://app.notion.com/p/41755d93ee2381d58021dd0b6d8d5dc4)
