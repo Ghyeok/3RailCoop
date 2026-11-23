@@ -1,0 +1,4 @@
+# CodeRabbit 자동 리뷰 끔 (D-006). 리뷰는 Claude Code 내부 리뷰가 맡는다.
+reviews:
+  auto_review:
+    enabled: false
