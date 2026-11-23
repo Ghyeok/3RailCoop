@@ -17,7 +17,8 @@
 
 - 문서 체계 스캐폴드 (D-001~D-005): AGENTS 재구성, SPEC·DECISION·HANDOFF 생성, Game_Design §8·§10 이전, 가이드 3개 삭제. 브랜치 `spec/S-000`에 커밋.
 - S-000 테스트 기반 구축: 자동 테스트 2/2 통과, 컴파일 오류 0, 씬 진입은 사용자 확인. 브랜치 `spec/S-000`에 커밋.
-- 테스트 실행 방법: 에디터를 열어둔 상태에서 `unity command run_tests --mode all --project-path C:/Unity/3RailCoop`. EditMode 결과는 즉시 반환되고, PlayMode는 비동기로 돌기 때문에 `unity command test_status`로 결과를 확인한다. 에디터가 닫혀 있으면 `unity test`를 쓴다.
+- `com.unity.pipeline` 0.8.0-exp.1 → 1.0.1 업그레이드: 회귀 테스트 2/2 통과, 콘솔 에러 0. 미커밋.
+- 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있으면 `unity test`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다.
 
 ## 4. 다음 할 일
 
@@ -33,6 +34,7 @@
 
 ## 6. 작업 트리 상태와 임시 작업
 
-- 현재 브랜치: `spec/S-000`.
+- 현재 브랜치: `spec/S-000` (마지막 커밋 `3e6b3d1`).
+- 미커밋 변경 (이번 세션): `Packages/manifest.json`·`packages-lock.json`의 pipeline 1.0.1 업그레이드, 이 HANDOFF 갱신.
 - 스캐폴드 이전부터 있던 사용자의 미커밋 변경은 그대로 남아 있다: `SteamLobby.cs`, `LobbyPlayer.cs`, `UI_LobbyCanvas.cs`, `UI_Popup.cs`, `UI_Popup_FriendInvite.cs`, `InGameScene.unity`, `ReadmeEditor.cs`, `Maplestory Bold SDF.asset`, `Notion_Writing_Guide.md` 수정. `UI_Base.cs`·`SteamFriendSlot.cs`·`Unity.lnk` 삭제. 장애물·플레이어·카메라 스크립트, `UIBase.cs`, `UI_SteamFriendSlot.cs`, Materials, ObstaclePatterns, `Obstacle.prefab`, `start-claude.bat` 미추적.
 - 임시 작업: 없음.
