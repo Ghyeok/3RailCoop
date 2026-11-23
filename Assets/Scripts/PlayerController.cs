@@ -12,15 +12,15 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float centerLaneX;
     [SerializeField, Min(0.01f)] private float laneSpacing = 4f;
     [SerializeField, Min(0f)] private float forwardSpeed = 5f;
+    [Tooltip("레일이 바뀐 뒤 다음 이동을 받기까지의 시간(초). 최종값은 플레이 테스트로 정한다 (O-01).")]
+    [SerializeField, Min(0f)] private float moveCooldownSeconds = 0.2f;
 
-    private int currentLane;
+    private LaneMovement laneMovement;
 
     private void Awake()
     {
-        currentLane = Mathf.Clamp(
-            Mathf.RoundToInt((transform.position.x - centerLaneX) / laneSpacing) + CENTER_LANE,
-            LEFT_LANE,
-            RIGHT_LANE);
+        int startLane = Mathf.RoundToInt((transform.position.x - centerLaneX) / laneSpacing) + CENTER_LANE;
+        laneMovement = new LaneMovement(startLane, LEFT_LANE, RIGHT_LANE);
         AlignToLane();
     }
 
@@ -39,13 +39,13 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 입력한 방향으로 이동
+    /// 입력한 방향으로 이동. 쿨타임 중이거나 끝 레일 바깥쪽이면 무시한다.
     /// </summary>
     /// <param name="direction"></param>
     private void MoveLane(int direction)
     {
-        currentLane = Mathf.Clamp(currentLane + direction, LEFT_LANE, RIGHT_LANE);
-        AlignToLane();
+        if (laneMovement.TryMove(direction, Time.time, moveCooldownSeconds))
+            AlignToLane();
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ public class PlayerController : MonoBehaviour
     private void AlignToLane()
     {
         Vector3 position = transform.position;
-        position.x = centerLaneX + (currentLane - CENTER_LANE) * laneSpacing;
+        position.x = centerLaneX + (laneMovement.CurrentLane - CENTER_LANE) * laneSpacing;
         transform.position = position;
     }
 }
