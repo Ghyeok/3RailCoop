@@ -35,12 +35,12 @@ public class LobbyPlayer : NetworkBehaviour
         if (IsOwner)
         {
             ulong mySteamId = SteamUser.GetSteamID().m_SteamID;
-            SetSteamIdServerRPC(mySteamId );
+            SetSteamIdServerRpc(mySteamId );
         }
     }
 
     [ServerRpc]
-    private void SetSteamIdServerRPC(ulong id)
+    private void SetSteamIdServerRpc(ulong id)
     {
         steamId.Value = id;
     }
@@ -52,12 +52,12 @@ public class LobbyPlayer : NetworkBehaviour
     {
         if (IsOwner)
         {
-            SetReadyServerRPC(!isReady.Value);
+            SetReadyServerRpc(!isReady.Value);
         }
     }
 
     [ServerRpc]
-    private void SetReadyServerRPC(bool newReadyState)
+    private void SetReadyServerRpc(bool newReadyState)
     {
         isReady.Value = newReadyState;
     }

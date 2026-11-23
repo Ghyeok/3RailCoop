@@ -1,4 +1,4 @@
-﻿using Netcode.Transports;
+using Netcode.Transports;
 using Steamworks;
 using System;
 using System.Collections;
@@ -13,14 +13,24 @@ public class SteamLobby : MonoBehaviour
 
     private const int MIN_PLAYER = 2;
     private const int MAX_PLAYER = 2;
-    private const float LobbyJoinTimeoutSeconds = 20f;
+    private const float LOBBY_CREATION_TIMEOUT_SECONDS = 20f;
+    private const float LOBBY_JOIN_TIMEOUT_SECONDS = 20f;
+    private const float NGO_CONNECTION_TIMEOUT_SECONDS = 30f;
+    private Coroutine ngoConnectionTimeout;
+
+    private sealed class LobbyCreationAttempt
+    {
+        public CallResult<LobbyCreated_t> result;
+        public Coroutine timeout;
+        public bool timedOut;
+    }
 
     private sealed class LobbyJoinAttempt
     {
-        public CSteamID LobbyId; // 요청한 로비 ID
-        public CallResult<LobbyEnter_t> Result; // 요청의 비동기 결과
-        public Coroutine Timeout; // 응답 대기 시간 관리
-        public bool TimedOut; // 시간 초과 여부
+        public CSteamID lobbyId; // 요청한 로비 ID
+        public CallResult<LobbyEnter_t> result; // 요청의 비동기 결과
+        public Coroutine timeout; // 응답 대기 시간 관리
+        public bool timedOut; // 시간 초과 여부
     }
 
     private CSteamID currentLobbyId = CSteamID.Nil;
@@ -28,25 +38,26 @@ public class SteamLobby : MonoBehaviour
     private List<ulong> connectedClientIds = new List<ulong>();
     private bool isCreatingLobby;
     private bool isJoiningLobby;
+    private LobbyCreationAttempt activeCreationAttempt;
+    private readonly List<LobbyCreationAttempt> CREATION_ATTEMPTS = new List<LobbyCreationAttempt>();
     private LobbyJoinAttempt activeJoinAttempt;
-    private readonly List<LobbyJoinAttempt> joinAttempts = new List<LobbyJoinAttempt>();
+    private readonly List<LobbyJoinAttempt> JOIN_ATTEMPTS = new List<LobbyJoinAttempt>();
+    private NetworkManager registeredNetworkManager;
 
     public event Action OnLobbyReady;
-
-    /// <summary>
-    /// 로비 생성 결과를 받을 콜백 변수
-    /// </summary>
-    protected Callback<LobbyCreated_t> lobbyCreated;
+    public event Action OnLobbyClosed;
 
     /// <summary>
     /// 로비 참가 요청을 받을 콜백 변수
     /// </summary>
     protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
+    private Callback<SteamServersDisconnected_t> steamServersDisconnected;
+    private Callback<SteamServersConnected_t> steamServersConnected;
 
     /// <summary>
     /// 호스트의 주소의 Key로 사용할 문자열
     /// </summary>
-    private const string HostSteamIdKey = "HostSteamId";
+    private const string HOST_STEAM_ID_KEY = "HostSteamId";
 
     #region Lifecycle
 
@@ -56,24 +67,32 @@ public class SteamLobby : MonoBehaviour
         if (!SteamBootstrap.IsSteamInitialized) return;
 
         // Steam 콜백 등록
-        lobbyCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
         gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyJoinRequested);
+        steamServersDisconnected = Callback<SteamServersDisconnected_t>.Create(OnSteamServersDisconnected);
+        steamServersConnected = Callback<SteamServersConnected_t>.Create(OnSteamServersConnected);
 
         // NGO 콜백 등록
-        NetworkManager.Singleton.OnConnectionEvent -= OnLobbyConnected;
-        NetworkManager.Singleton.OnConnectionEvent += OnLobbyConnected;
+        if (!RegisterNetworkCallbacks(NetworkManager.Singleton))
+            Debug.LogError("NetworkManager를 찾을 수 없어 NGO 콜백을 등록하지 못했습니다.");
     }
 
     private void OnDestroy()
     {
-        lobbyCreated?.Dispose();
         gameLobbyJoinRequested?.Dispose();
-        foreach (var attempt in joinAttempts)
-            attempt.Result?.Dispose();
-        joinAttempts.Clear();
+        steamServersDisconnected?.Dispose();
+        steamServersConnected?.Dispose();
+        foreach (var attempt in CREATION_ATTEMPTS)
+            attempt.result?.Dispose();
+        CREATION_ATTEMPTS.Clear();
+        foreach (var attempt in JOIN_ATTEMPTS)
+            attempt.result?.Dispose();
+        JOIN_ATTEMPTS.Clear();
 
-        if (NetworkManager.Singleton != null)
-            NetworkManager.Singleton.OnConnectionEvent -= OnLobbyConnected;
+        if (registeredNetworkManager != null)
+        {
+            registeredNetworkManager.OnConnectionEvent -= OnLobbyConnected;
+            registeredNetworkManager.OnClientStopped -= OnClientStopped;
+        }
     }
 
     #endregion
@@ -91,12 +110,20 @@ public class SteamLobby : MonoBehaviour
             return;
         }
 
+        if (!SteamUser.BLoggedOn())
+        {
+            Debug.LogWarning("Steam 서버에 연결되지 않아 로비를 생성할 수 없습니다.");
+            return;
+        }
+
         var manager = NetworkManager.Singleton;
         if (manager == null)
         {
             Debug.LogError("NetworkManager를 찾을 수 없습니다.");
             return;
         }
+
+        RegisterNetworkCallbacks(manager);
 
         if (isCreatingLobby || isJoiningLobby || currentLobbyId.IsValid() || manager.IsListening || manager.ShutdownInProgress)
         {
@@ -105,11 +132,20 @@ public class SteamLobby : MonoBehaviour
         }
 
         isCreatingLobby = true;
-        if (SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, MAX_PLAYER) == SteamAPICall_t.Invalid)
+        var call = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, MAX_PLAYER);
+        if (call == SteamAPICall_t.Invalid)
         {
             isCreatingLobby = false;
             Debug.LogError("Steam 로비 생성 요청에 실패했습니다.");
+            return;
         }
+
+        var attempt = new LobbyCreationAttempt();
+        attempt.result = CallResult<LobbyCreated_t>.Create((result, ioFailure) => OnLobbyCreationResult(attempt, result, ioFailure));
+        CREATION_ATTEMPTS.Add(attempt);
+        activeCreationAttempt = attempt;
+        attempt.result.Set(call);
+        attempt.timeout = StartCoroutine(WaitForLobbyCreation(attempt));
     }
 
     /// <summary>
@@ -117,31 +153,41 @@ public class SteamLobby : MonoBehaviour
     /// </summary>
     public void LeaveLobby()
     {
-        if(SteamBootstrap.IsSteamInitialized && currentLobbyId.IsValid())
+        CancelNgoConnectionTimeout();
+
+        if (SteamBootstrap.IsSteamInitialized && currentLobbyId.IsValid())
         {
             SteamMatchmaking.LeaveLobby(currentLobbyId); ;
-            currentLobbyId = CSteamID.Nil;
         }
+
+        currentLobbyId = CSteamID.Nil;
 
         var manager = NetworkManager.Singleton;
         if (manager != null && manager.IsListening && !manager.ShutdownInProgress)
             manager.Shutdown();
 
+        connectedClientIds.Clear();
+        OnLobbyClosed?.Invoke();
         Debug.Log("로비를 나갑니다.");
     }
 
     public void LeaveLobby(CSteamID steamId)
     {
+        CancelNgoConnectionTimeout();
+
         if (SteamBootstrap.IsSteamInitialized && steamId.IsValid())
         {
             SteamMatchmaking.LeaveLobby(steamId);
-            currentLobbyId = CSteamID.Nil;
         }
+
+        currentLobbyId = CSteamID.Nil;
 
         var manager = NetworkManager.Singleton;
         if (manager != null && manager.IsListening && !manager.ShutdownInProgress)
             manager.Shutdown();
 
+        connectedClientIds.Clear();
+        OnLobbyClosed?.Invoke();
         Debug.Log("로비를 나갑니다.");
     }
 
@@ -199,6 +245,39 @@ public class SteamLobby : MonoBehaviour
 
     #region Steam and NGO callbacks
 
+    private void OnLobbyCreationResult(LobbyCreationAttempt attempt, LobbyCreated_t callback, bool ioFailure)
+    {
+        if (attempt.timeout != null)
+            StopCoroutine(attempt.timeout);
+        CREATION_ATTEMPTS.Remove(attempt);
+        attempt.result.Dispose();
+
+        if (attempt.timedOut)
+        {
+            var lateLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+            if (!ioFailure && callback.m_eResult == EResult.k_EResultOK && lateLobbyId.IsValid() &&
+                lateLobbyId != currentLobbyId && SteamBootstrap.IsSteamInitialized)
+            {
+                SteamMatchmaking.LeaveLobby(lateLobbyId);
+                Debug.LogWarning("시간 초과 후 생성된 Steam 로비를 떠났습니다.");
+            }
+            return;
+        }
+
+        if (activeCreationAttempt != attempt)
+            return;
+
+        activeCreationAttempt = null;
+        isCreatingLobby = false;
+        if (ioFailure)
+        {
+            Debug.LogError("Steam 로비 생성 응답을 받는 중 통신 오류가 발생했습니다.");
+            return;
+        }
+
+        OnLobbyCreated(callback);
+    }
+
     /// <summary>
     /// 스팀 서버가 로비를 다 만들고 나서 호출해주는 콜백
     /// </summary>
@@ -209,11 +288,24 @@ public class SteamLobby : MonoBehaviour
 
         if(callback.m_eResult != EResult.k_EResultOK)
         {
-            Debug.LogError("로비 생성 실패!");
+            Debug.LogError($"Steam 로비 생성 실패: {callback.m_eResult}");
             return;
         }
 
         var createdLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+        if (!createdLobbyId.IsValid())
+        {
+            Debug.LogError("생성된 Steam 로비 ID가 유효하지 않습니다.");
+            return;
+        }
+
+        if (!SteamBootstrap.IsSteamInitialized || !SteamUser.BLoggedOn())
+        {
+            if (SteamBootstrap.IsSteamInitialized)
+                SteamMatchmaking.LeaveLobby(createdLobbyId);
+            Debug.LogError("Steam 서버 연결이 끊겨 생성된 로비를 사용할 수 없습니다.");
+            return;
+        }
         var manager = NetworkManager.Singleton;
         if (manager == null || manager.IsListening || manager.ShutdownInProgress)
         {
@@ -221,16 +313,17 @@ public class SteamLobby : MonoBehaviour
             Debug.LogError("네트워크를 시작할 수 없어 생성된 Steam 로비를 떠납니다.");
             return;
         }
+        RegisterNetworkCallbacks(manager);
 
         // 호스트 본인의 Steam ID를 가져와서 문자열로 변환
         string hostSteamId = SteamUser.GetSteamID().ToString();
 
         // 방금 만들어진 로비(m_ulSteamIDLobby)에 방장 주소 기록
-        bool isValidateLobbyData = SteamMatchmaking.SetLobbyData(createdLobbyId, HostSteamIdKey, hostSteamId);
+        bool isValidateLobbyData = SteamMatchmaking.SetLobbyData(createdLobbyId, HOST_STEAM_ID_KEY, hostSteamId);
         if (!isValidateLobbyData)
         {
             LeaveLobby(createdLobbyId);
-            Debug.LogError("호스트의 Steam ID를 읽을 수 없습니다!");
+            Debug.LogError("호스트의 Steam ID를 로비 데이터에 저장하지 못했습니다.");
             return;
         }
 
@@ -269,18 +362,19 @@ public class SteamLobby : MonoBehaviour
             return;
         }
 
-        // 로비의 소유자 아이디와 접속하려는 유저 아이디가 같으면 호스트로 판정
+        // 참가 중 기존 호스트가 떠나 게스트가 소유자가 되었는지 확인
         var lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
 
         bool isMyLobby = SteamMatchmaking.GetLobbyOwner(lobbyId) == SteamUser.GetSteamID();
         if (isMyLobby)
         {
-            Debug.Log("호스트는 StartClient() 실행 불가");
+            Debug.LogWarning("로비 참가 중 소유자가 변경되어 참가를 취소합니다.");
+            LeaveLobby(lobbyId);
             return;
         }
 
         // 호스트가 적어둔 주소를 HostAddress 라는 Key로 꺼내옴
-        string hostSteamId = SteamMatchmaking.GetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HostSteamIdKey);
+        string hostSteamId = SteamMatchmaking.GetLobbyData(new CSteamID(callback.m_ulSteamIDLobby), HOST_STEAM_ID_KEY);
         if (!ulong.TryParse(hostSteamId, out ulong parsedHostId) || parsedHostId == 0)
         {
             Debug.LogError("호스트 Steam ID가 올바르지 않습니다!");
@@ -296,6 +390,7 @@ public class SteamLobby : MonoBehaviour
             LeaveLobby(lobbyId);
             return;
         }
+        RegisterNetworkCallbacks(manager);
 
         var transport = manager.NetworkConfig.NetworkTransport as SteamNetworkingSocketsTransport;
         if (transport == null)
@@ -319,6 +414,13 @@ public class SteamLobby : MonoBehaviour
             return;
         }
 
+        // 로비는 유효하지만 NGO 클라이언트 연결이 완료되지 않은 상태
+        if(currentLobbyId.IsValid() && !manager.IsConnectedClient)
+        {
+            CancelNgoConnectionTimeout();
+            ngoConnectionTimeout = StartCoroutine(WaitForNgoConnection(manager, currentLobbyId));
+        }
+
         Debug.Log($"로비 입장 성공! 호스트 ID는 : {hostSteamId}");
     }
 
@@ -328,6 +430,12 @@ public class SteamLobby : MonoBehaviour
     /// <param name="callback"></param>
     private void OnLobbyJoinRequested(GameLobbyJoinRequested_t callback)
     {
+        if (!SteamBootstrap.IsSteamInitialized || !SteamUser.BLoggedOn())
+        {
+            Debug.LogWarning("Steam 서버에 연결되지 않아 로비에 참가할 수 없습니다.");
+            return;
+        }
+
         var manager = NetworkManager.Singleton;
 
         if (manager == null)
@@ -335,6 +443,8 @@ public class SteamLobby : MonoBehaviour
             Debug.LogError("NetworkManager를 찾을 수 없습니다.");
             return;
         }
+
+        RegisterNetworkCallbacks(manager);
 
         // 로비 생성 중, NGO가 실행 혹은 종료 중일 때 새 참가 요청을 무시
         if (isCreatingLobby || isJoiningLobby || currentLobbyId.IsValid() || manager.IsListening || manager.ShutdownInProgress)
@@ -355,26 +465,27 @@ public class SteamLobby : MonoBehaviour
             return;
         }
 
-        var attempt = new LobbyJoinAttempt { LobbyId = requestedLobbyId };
-        attempt.Result = CallResult<LobbyEnter_t>.Create((result, ioFailure) => OnLobbyJoinResult(attempt, result, ioFailure));
-        joinAttempts.Add(attempt);
+        var attempt = new LobbyJoinAttempt { lobbyId = requestedLobbyId };
+        attempt.result = CallResult<LobbyEnter_t>.Create((result, ioFailure) => OnLobbyJoinResult(attempt, result, ioFailure));
+        JOIN_ATTEMPTS.Add(attempt);
         activeJoinAttempt = attempt;
-        attempt.Result.Set(call);
-        attempt.Timeout = StartCoroutine(WaitForLobbyJoin(attempt));
+        attempt.result.Set(call);
+        attempt.timeout = StartCoroutine(WaitForLobbyJoin(attempt));
     }
 
     private void OnLobbyJoinResult(LobbyJoinAttempt attempt, LobbyEnter_t result, bool ioFailure)
     {
-        if (attempt.Timeout != null)
-            StopCoroutine(attempt.Timeout);
-        joinAttempts.Remove(attempt);
-        attempt.Result.Dispose();
+        if (attempt.timeout != null)
+            StopCoroutine(attempt.timeout);
+
+        JOIN_ATTEMPTS.Remove(attempt);
+        attempt.result.Dispose();
 
         bool entered = !ioFailure &&
             result.m_EChatRoomEnterResponse == (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess;
         var resultLobbyId = new CSteamID(result.m_ulSteamIDLobby);
 
-        if (attempt.TimedOut)
+        if (attempt.timedOut)
         {
             // 같은 로비를 다시 사용 중이면 오래된 응답으로 현재 연결을 끊지 않는다.
             if (entered && resultLobbyId.IsValid() && resultLobbyId != currentLobbyId &&
@@ -384,15 +495,15 @@ public class SteamLobby : MonoBehaviour
         }
 
         activeJoinAttempt = null;
-        if (ioFailure || resultLobbyId != attempt.LobbyId)
+        if (ioFailure || resultLobbyId != attempt.lobbyId)
         {
             isJoiningLobby = false;
             requestedLobbyId = CSteamID.Nil;
             if (SteamBootstrap.IsSteamInitialized)
             {
-                if (attempt.LobbyId.IsValid())
-                    SteamMatchmaking.LeaveLobby(attempt.LobbyId);
-                if (entered && resultLobbyId.IsValid() && resultLobbyId != attempt.LobbyId)
+                if (attempt.lobbyId.IsValid())
+                    SteamMatchmaking.LeaveLobby(attempt.lobbyId);
+                if (entered && resultLobbyId.IsValid() && resultLobbyId != attempt.lobbyId)
                     SteamMatchmaking.LeaveLobby(resultLobbyId);
             }
             Debug.LogError("Steam 로비 참가 응답을 확인하지 못했습니다.");
@@ -400,8 +511,8 @@ public class SteamLobby : MonoBehaviour
         }
 
         // 이전 요청의 늦은 성공으로 이미 들어간 동일 로비도 정리한다.
-        if (!entered && SteamBootstrap.IsSteamInitialized && attempt.LobbyId.IsValid())
-            SteamMatchmaking.LeaveLobby(attempt.LobbyId);
+        if (!entered && SteamBootstrap.IsSteamInitialized && attempt.lobbyId.IsValid())
+            SteamMatchmaking.LeaveLobby(attempt.lobbyId);
 
         OnLobbyEntered(result);
     }
@@ -421,7 +532,6 @@ public class SteamLobby : MonoBehaviour
             $"ShutdownInProgress: {manager.ShutdownInProgress}"
          );
 
-
         switch (data.EventType)
         {
             // 내가 호스트에 접속했거나, 호스트에게 새 게스트가 접속함
@@ -433,6 +543,11 @@ public class SteamLobby : MonoBehaviour
                 {
                     foreach (ulong peerId in data.PeerClientIds)
                         AddClientId(peerId);
+
+                    CancelNgoConnectionTimeout();
+
+                    // 게스트의 NGO 연결이 완료되면 대기방을 연다.
+                    OnLobbyReady?.Invoke();
                 }
                 break;
 
@@ -458,9 +573,84 @@ public class SteamLobby : MonoBehaviour
         Debug.Log($"현재 NGO 참여자: {string.Join(", ", connectedClientIds)}");
     }
 
+    private void OnClientStopped(bool wasHost)
+    {
+        CancelNgoConnectionTimeout();
+
+        if (!currentLobbyId.IsValid())
+            return;
+
+        Debug.LogWarning(wasHost ? "호스트의 NGO 네트워크가 종료되었습니다." : "게스트의 NGO 클라이언트가 종료되었습니다.");
+        LeaveLobby();
+    }
+
+    private void OnSteamServersDisconnected(SteamServersDisconnected_t callback)
+    {
+        Debug.LogWarning($"Steam 서버 연결이 끊어졌습니다. 재연결을 기다립니다: {callback.m_eResult}");
+
+        if (activeCreationAttempt != null)
+        {
+            var attempt = activeCreationAttempt;
+            attempt.timedOut = true;
+            if (attempt.timeout != null) StopCoroutine(attempt.timeout);
+            activeCreationAttempt = null;
+            isCreatingLobby = false;
+        }
+
+        if (activeJoinAttempt != null)
+        {
+            var attempt = activeJoinAttempt;
+            attempt.timedOut = true;
+            if (attempt.timeout != null) StopCoroutine(attempt.timeout);
+            activeJoinAttempt = null;
+            isJoiningLobby = false;
+            requestedLobbyId = CSteamID.Nil;
+            if (SteamBootstrap.IsSteamInitialized && attempt.lobbyId.IsValid())
+                SteamMatchmaking.LeaveLobby(attempt.lobbyId);
+        }
+    }
+
+    private void OnSteamServersConnected(SteamServersConnected_t callback)
+    {
+        Debug.Log("Steam 서버 연결이 복구되었습니다.");
+    }
+
     #endregion
 
     #region Helpers
+
+    private bool RegisterNetworkCallbacks(NetworkManager manager)
+    {
+        if (manager == null)
+            return false;
+        if (registeredNetworkManager == manager)
+            return true;
+
+        if (registeredNetworkManager != null)
+        {
+            registeredNetworkManager.OnConnectionEvent -= OnLobbyConnected;
+            registeredNetworkManager.OnClientStopped -= OnClientStopped;
+        }
+
+        registeredNetworkManager = manager;
+        manager.OnConnectionEvent -= OnLobbyConnected;
+        manager.OnConnectionEvent += OnLobbyConnected;
+        manager.OnClientStopped -= OnClientStopped;
+        manager.OnClientStopped += OnClientStopped;
+        return true;
+    }
+
+    private IEnumerator WaitForLobbyCreation(LobbyCreationAttempt attempt)
+    {
+        yield return new WaitForSecondsRealtime(LOBBY_CREATION_TIMEOUT_SECONDS);
+        if (activeCreationAttempt != attempt)
+            yield break;
+
+        attempt.timedOut = true;
+        activeCreationAttempt = null;
+        isCreatingLobby = false;
+        Debug.LogWarning("Steam 로비 생성 응답 시간이 초과되었습니다.");
+    }
 
     /// <summary>
     /// 연결된 모든 플레이어가 Ready인지?
@@ -503,17 +693,17 @@ public class SteamLobby : MonoBehaviour
     /// <returns></returns>
     private IEnumerator WaitForLobbyJoin(LobbyJoinAttempt attempt)
     {
-        yield return new WaitForSecondsRealtime(LobbyJoinTimeoutSeconds);
+        yield return new WaitForSecondsRealtime(LOBBY_JOIN_TIMEOUT_SECONDS);
         if (activeJoinAttempt != attempt) yield break;
 
-        attempt.TimedOut = true;
+        attempt.timedOut = true;
         activeJoinAttempt = null;
         isJoiningLobby = false;
         requestedLobbyId = CSteamID.Nil;
 
         // Steam 요청은 취소할 수 없으므로 늦게 도착하는 결과도 계속 감시한다.
-        if (SteamBootstrap.IsSteamInitialized && attempt.LobbyId.IsValid())
-            SteamMatchmaking.LeaveLobby(attempt.LobbyId);
+        if (SteamBootstrap.IsSteamInitialized && attempt.lobbyId.IsValid())
+            SteamMatchmaking.LeaveLobby(attempt.lobbyId);
         Debug.LogWarning("Steam 로비 참가 응답 시간이 초과되었습니다.");
     }
 
@@ -523,6 +713,29 @@ public class SteamLobby : MonoBehaviour
         {
             connectedClientIds.Add(clientId);
         }
+    }
+
+    private IEnumerator WaitForNgoConnection(NetworkManager manager, CSteamID lobbyId)
+    {
+        yield return new WaitForSecondsRealtime(NGO_CONNECTION_TIMEOUT_SECONDS);
+        ngoConnectionTimeout = null;
+
+        if(currentLobbyId != lobbyId || manager != null && manager.IsConnectedClient)
+        {
+            yield break;
+        }
+
+        Debug.LogWarning("NGO 연결 대기 시간이 초과되었습니다.");
+        LeaveLobby();
+    }
+
+    private void CancelNgoConnectionTimeout()
+    {
+        if (ngoConnectionTimeout == null)
+            return;
+
+        StopCoroutine(ngoConnectionTimeout);
+        ngoConnectionTimeout = null;
     }
 
     #endregion

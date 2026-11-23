@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -14,7 +14,7 @@ public class ReadmeEditor : Editor
     
     static string s_ReadmeSourceDirectory = "Assets/TutorialInfo";
 
-    const float k_Space = 16f;
+    const float SPACE = 16f;
 
     static ReadmeEditor()
     {
@@ -103,10 +103,10 @@ public class ReadmeEditor : Editor
         {
             if (readme.icon != null)
             {
-                GUILayout.Space(k_Space);
+                GUILayout.Space(SPACE);
                 GUILayout.Label(readme.icon, GUILayout.Width(iconWidth), GUILayout.Height(iconWidth));
             }
-            GUILayout.Space(k_Space);
+            GUILayout.Space(SPACE);
             GUILayout.BeginVertical();
             {
 
@@ -145,7 +145,7 @@ public class ReadmeEditor : Editor
                 }
             }
 
-            GUILayout.Space(k_Space);
+            GUILayout.Space(SPACE);
         }
 
         if (GUILayout.Button("Remove Readme Assets", ButtonStyle))

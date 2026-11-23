@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SteamFriendSlot : MonoBehaviour
+public class UI_SteamFriendSlot : MonoBehaviour
 {
     [SerializeField] RawImage friendAvatar;
     [SerializeField] TextMeshProUGUI friendText;
