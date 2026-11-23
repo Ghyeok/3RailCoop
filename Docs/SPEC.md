@@ -144,8 +144,8 @@
   - 대상: `Obstacle.prefab`, `ObstaclePattern`(ScriptableObject), `ObstacleSpawner`, `Assets/ObstaclePatterns/RepeatMergeSplit.asset`
   - 완료 기준: 스포너가 Inspector에 연결한 패턴의 숫자 사이클을 순서대로 생성한다(예: `13`은 1·3번 레일, `0`은 빈 사이클). 같은 사이클의 장애물은 같은 Z 좌표에 생성된다. 세 레일을 모두 막는 사이클(예: `123`)은 패턴 검증에서 거부한다.
   - 테스트: 사이클 해석 로직은 EditMode, 생성 결과는 PlayMode 또는 [수동]
-  - 상태: 대기
-  - 결과: —
+  - 상태: 보고됨
+  - 결과: (2026-11-23 보고) 사이클 해석·검증을 순수 C# `ObstacleCycle`로 분리하고 전 레일 차단(`123` 등) 거부 추가. EditMode 21/21(사이클 규칙 20), PlayMode 3/3(순서대로 같은 Z 생성, 전 레일 차단 패턴 거부) 통과. 생성 결과는 PlayMode 자동 테스트로 확인. 코드 리뷰(high) nit 5건 모두 반영.
 
 - [ ] S-302 충돌·게임 오버·재시도·클리어 루프 (MVP)
   - 기획 근거: §3 승리와 패배, §5 레벨 디자인, §6 게임 오버와 클리어
