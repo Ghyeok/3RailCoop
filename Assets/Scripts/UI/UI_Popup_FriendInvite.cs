@@ -39,7 +39,7 @@ public class UI_Popup_FriendInvite : MonoBehaviour
                 string name = SteamFriends.GetFriendPersonaName(id);
 
                 var slot = Instantiate(steamFriendSlot, contentTransform, false);
-                SteamFriendSlot friendSlot = slot.GetComponent<SteamFriendSlot>();
+                UI_SteamFriendSlot friendSlot = slot.GetComponent<UI_SteamFriendSlot>();
                 friendSlot.Bind(id, onInvite);
 
                 Debug.Log(name);

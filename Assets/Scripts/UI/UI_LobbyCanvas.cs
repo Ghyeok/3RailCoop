@@ -1,16 +1,19 @@
 ﻿using TMPro;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-public class UI_LobbyCanvas : UI_Base
+public class UI_LobbyCanvas : UIBase
 {
     [SerializeField] private SteamLobby steamLobby;
 
     [SerializeField] private GameObject createRoomPanel;
     [SerializeField] private GameObject waitingRoomPanel;
 
-    [SerializeField] private UI_PlayerSlot playerSlot_host;
-    [SerializeField] private UI_PlayerSlot playerSlot_client;
+    [FormerlySerializedAs("playerSlot_host")]
+    [SerializeField] private UI_PlayerSlot playerSlotHost;
+    [FormerlySerializedAs("playerSlot_client")]
+    [SerializeField] private UI_PlayerSlot playerSlotClient;
 
     private void Start()
     {
@@ -28,11 +31,16 @@ public class UI_LobbyCanvas : UI_Base
 
         steamLobby.OnLobbyReady -= ActiveWaitingRoomPanel;
         steamLobby.OnLobbyReady += ActiveWaitingRoomPanel;
+
+        steamLobby.OnLobbyClosed -= ReturnToCreateRoomPanel;
+        steamLobby.OnLobbyClosed += ReturnToCreateRoomPanel;
     }
 
     private void OnDisable()
     {
         steamLobby.OnLobbyReady -= ActiveWaitingRoomPanel;
+        steamLobby.OnLobbyClosed -= ReturnToCreateRoomPanel;
+
         LobbyPlayer.OnLobbyPlayerSpawned -= OnLobbyPlayerSpawned;
         LobbyPlayer.OnLobbyPlayerDespawned -= OnLobbyPlayerDespawned;
     }
@@ -53,6 +61,12 @@ public class UI_LobbyCanvas : UI_Base
         }
     }
 
+    private void ReturnToCreateRoomPanel()
+    {
+        createRoomPanel.SetActive(true);
+        waitingRoomPanel.SetActive(false);
+    }
+
     public void OnReadyClicked()
     {
         var manager = NetworkManager.Singleton;
@@ -69,8 +83,6 @@ public class UI_LobbyCanvas : UI_Base
     public void OnLeaveClicked()
     {
         steamLobby.LeaveLobby();
-        createRoomPanel.SetActive(true);
-        waitingRoomPanel.SetActive(false);
     }
 
     private void OnLobbyPlayerSpawned(LobbyPlayer player)
@@ -79,8 +91,8 @@ public class UI_LobbyCanvas : UI_Base
 
         UI_PlayerSlot slot =
             player.OwnerClientId == NetworkManager.ServerClientId
-            ? playerSlot_host
-            : playerSlot_client;
+            ? playerSlotHost
+            : playerSlotClient;
 
         slot.Bind(player);
     }
@@ -89,8 +101,8 @@ public class UI_LobbyCanvas : UI_Base
     {
         UI_PlayerSlot slot =
             player.OwnerClientId == NetworkManager.ServerClientId
-            ? playerSlot_host
-            : playerSlot_client;
+            ? playerSlotHost
+            : playerSlotClient;
 
         if (slot.IsBoundTo(player))
             slot.UnBind();

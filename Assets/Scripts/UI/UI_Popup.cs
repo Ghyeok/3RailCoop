@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class UI_Popup : UI_Base
+public class UI_Popup : UIBase
 {
     public void Close()
     {
