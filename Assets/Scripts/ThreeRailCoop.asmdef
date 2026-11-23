@@ -1,0 +1,21 @@
+{
+    "name": "ThreeRailCoop",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Netcode.Runtime",
+        "SteamNetworkingSockets Transport for Netcode for GameObjects",
+        "com.rlabrecque.steamworks.net",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
