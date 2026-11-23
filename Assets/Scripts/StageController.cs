@@ -17,7 +17,7 @@ public class StageController : MonoBehaviour
     [SerializeField] private PlayerHitbox[] playerHitboxes = new PlayerHitbox[0];
     [SerializeField] private TMP_Text messageText;
 
-    [Tooltip("이 거리만큼 전진하면 클리어한다. 테스트 스테이지 값은 S-304에서 정한다 (O-06).")]
+    [Tooltip("이 거리만큼 전진하면 클리어한다. 마지막 장애물 Z(대략 전체 사이클 수 × 사이클 간격 × 전진 속도 + 생성 거리, 프레임 지연만큼 더 뒤)보다 커야 하므로 패턴·간격·속도를 바꾸면 다시 맞춘다.")]
     [SerializeField, Min(0.01f)] private float targetDistance = 100f;
     [SerializeField] private Key retryKey = Key.R;
 
