@@ -7,7 +7,7 @@
 ## 1. 현재 목표와 최신 요청
 
 - 목표: MVP 완료 (D-007). 1명의 로컬 플레이어가 Steam 없이 두 플레이어를 조작해 테스트 스테이지를 진행하고 게임 오버·재시도·클리어까지 하는 상태. 판정은 실시간.
-- MVP 체크리스트(SPEC): S-101 → S-301 → S-103 → S-203 → S-302 → S-304. S-101(PR #9)·S-301(PR #10)·S-103(PR #11)·S-203(PR #12) 완료, 나머지는 `대기`. 다음은 S-302.
+- MVP 체크리스트(SPEC): S-101 → S-301 → S-103 → S-203 → S-302 → S-304. S-101(PR #9)·S-301(PR #10)·S-103(PR #11)·S-203(PR #12)·S-302(PR #13) 완료. 남은 항목은 S-304.
 - 최신 요청: "MVP 체크리스트 전부를 진행해줘." 항목별로 사용자 승인을 받은 뒤 다음 항목을 자동으로 이어간다. S-103·S-203·S-302의 [수동] 확인은 S-304 전체 플레이 때 한꺼번에 한다.
 - 사용자가 정한 MVP 값: 이동 쿨타임 기본 0.2초(Inspector 조절), 재시도 키 R, 테스트 스테이지는 난이도 1 핵심 패턴 4개(12→12, 23→23, 1→3→1→3→13→2, 13→2→13→2→13→2, 사이에 빈 사이클, 약 30초). 목표 거리는 마지막 장애물 직후, 속도 5, 사이클 간격 1초.
 - 유지되는 요청: 사용자의 명시적인 요청이 모든 규칙보다 우선한다.
@@ -25,6 +25,8 @@
 - PR #10: S-301. 사이클 해석·검증을 순수 C# `ObstacleCycle`로 분리, 전 레일 차단 거부. EditMode 21/21, PlayMode 3/3.
 - PR #11: S-103. 레일 위치·이동 쿨타임을 순수 C# `LaneMovement`로 분리, `PlayerController.moveCooldownSeconds` 기본 0.2초. EditMode 30/30, PlayMode 3/3. 조작감 [수동] 확인은 S-304에서.
 - PR #12: S-203. 합체·분리 순수 C# `CoopLanes`(레일 1~3), 씬에 하나인 `CoopController`가 두 플레이어 입력·전진 속도·위치를 맡음(`PlayerController` 삭제). 카메라는 `forwardSource`로 같은 속도. EditMode 46/46, PlayMode 6/6. 가정: 합체 프레임 분리 입력·분리 프레임 이동 입력은 버림(O-09), 한 기기 Space는 두 플레이어 분리 입력.
+- PR #13: S-302. 상태 전이 순수 C# `StageRun`, `StageController`(충돌 게임 오버, 실제 전진 거리로 클리어, R 재시도, uGUI+TMP 영문 메시지). 충돌은 플레이어 트리거·kinematic Rigidbody·`PlayerHitbox`와 프리팹 `Obstacle` 표시. 목표 거리 기본 100. EditMode 57/57, PlayMode 12/12.
+- 주의: Play 모드에서 TMP 텍스트가 렌더되면 `Assets/Maplestory Bold SDF.asset`(동적 아틀라스)이 바뀐다. 작업과 무관하면 커밋 전에 되돌린다.
 - 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다.
 - 주의 (병합): `gh pr merge` 뒤 PR 상태가 `MERGED`인지 확인한 다음에 브랜치를 지운다. 병합 전에 원격 브랜치를 지우면 PR이 닫힌다 (PR #9에서 발생, reflog로 복구).
 - 주의: worktree를 지울 때 Unity Library 경로가 길어 `git worktree remove`가 실패하면 PowerShell `Remove-Item -LiteralPath '\?\<경로>' -Recurse -Force` 후 `git worktree prune`.
@@ -32,8 +34,7 @@
 
 ## 4. 다음 할 일
 
-1. S-302 충돌·게임 오버·재시도(R 키)·클리어 착수. 게임 상태 전이는 순수 C#, 재시작은 `CoopController`·스포너·카메라를 시작 상태로 되돌린다.
-2. 이어서 S-304.
+1. S-304 착수: 테스트 스테이지(난이도 1 핵심 패턴 4개, 사이에 빈 사이클, 약 30초, 속도 5, 간격 1초, 목표 거리는 마지막 장애물 직후) 구성 후 사용자 전체 플레이 [수동] 확인. S-103·S-203·S-302의 키 입력 확인도 여기서 한다.
 3. MVP 이후: S-401 → S-701 → S-201(틱 판정 구조 논의, O-01·O-04·O-09) → …
 
 ## 5. 열린 질문과 필요한 사용자 응답
@@ -44,6 +45,6 @@
 
 ## 6. 작업 트리 상태와 임시 작업
 
-- 현재 브랜치: `main` (PR #12 병합 후).
+- 현재 브랜치: `main` (PR #13 병합 후).
 - 미커밋 변경: 없음.
 - 임시 작업: 없음.
