@@ -17,7 +17,14 @@ public class QuarterViewCameraController : MonoBehaviour
     [SerializeField] private MovementMode movementMode = MovementMode.FollowTarget;
     [SerializeField] private Transform target;
     [SerializeField] private Vector3 offset = new Vector3(0f, 6f, -6f);
-    [SerializeField, Min(0f)] private float forwardSpeed = 5f;
+    [Tooltip("ConstantSpeed 모드에서 전진 속도를 가져올 대상. 플레이어와 같은 속도를 쓴다.")]
+    [SerializeField] private CoopController forwardSource;
+
+    private void Start()
+    {
+        if (movementMode == MovementMode.ConstantSpeed && forwardSource == null)
+            Debug.LogError("ConstantSpeed 모드에는 전진 속도를 가져올 CoopController가 필요합니다.", this);
+    }
 
     private void LateUpdate()
     {
@@ -28,9 +35,9 @@ public class QuarterViewCameraController : MonoBehaviour
             if (target != null)
                 transform.position = target.position + offset;
         }
-        else
+        else if (forwardSource != null && forwardSource.isActiveAndEnabled)
         {
-            transform.position += Vector3.forward * (forwardSpeed * Time.deltaTime);
+            transform.position += Vector3.forward * (forwardSource.ForwardSpeed * Time.deltaTime);
         }
     }
 }

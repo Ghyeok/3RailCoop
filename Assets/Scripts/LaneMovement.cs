@@ -38,6 +38,15 @@ public class LaneMovement
         return true;
     }
 
+    /// <summary>
+    /// 분리처럼 규칙이 정한 레일로 바로 옮기고 쿨타임을 시작한다. 쿨타임 중이어도 적용한다.
+    /// </summary>
+    public void MoveTo(int lane, float time, float cooldownSeconds)
+    {
+        CurrentLane = Clamp(lane);
+        readyTime = time + cooldownSeconds;
+    }
+
     private int Clamp(int lane)
     {
         if (lane < minLane) return minLane;

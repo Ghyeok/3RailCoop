@@ -83,6 +83,18 @@ public class LaneMovementTests
     }
 
     [Test]
+    public void MoveTo_PlacesLaneAndStartsCooldown()
+    {
+        var movement = new LaneMovement(MIN_LANE, MIN_LANE, MAX_LANE);
+
+        movement.MoveTo(MAX_LANE, 1f, COOLDOWN);
+
+        Assert.AreEqual(MAX_LANE, movement.CurrentLane);
+        Assert.IsTrue(movement.IsCoolingDown(1f + COOLDOWN / 2f));
+        Assert.IsFalse(movement.IsCoolingDown(1f + COOLDOWN));
+    }
+
+    [Test]
     public void Constructor_ClampsStartLane()
     {
         Assert.AreEqual(MAX_LANE, new LaneMovement(5, MIN_LANE, MAX_LANE).CurrentLane);

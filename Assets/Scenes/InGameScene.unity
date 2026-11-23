@@ -582,7 +582,7 @@ MonoBehaviour:
   movementMode: 1
   target: {fileID: 1355571990}
   offset: {x: 0, y: 6, z: -6}
-  forwardSpeed: 5
+  forwardSource: {fileID: 1228076709}
 --- !u!114 &636933866
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -692,7 +692,6 @@ GameObject:
   - component: {fileID: 1038025127}
   - component: {fileID: 1038025126}
   - component: {fileID: 1038025130}
-  - component: {fileID: 1038025131}
   m_Layer: 0
   m_Name: Player2
   m_TagString: Untagged
@@ -822,23 +821,6 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
---- !u!114 &1038025131
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1038025125}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0fcac2463d5c48c4da848fdb5b11be6f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  moveLeftKey: 61
-  moveRightKey: 62
-  centerLaneX: 0
-  laneSpacing: 4
-  forwardSpeed: 5
 --- !u!1 &1121258468
 GameObject:
   m_ObjectHideFlags: 0
@@ -873,6 +855,61 @@ Transform:
   - {fileID: 539275800}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1228076708
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1228076710}
+  - component: {fileID: 1228076709}
+  m_Layer: 0
+  m_Name: CoopController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1228076709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1228076708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c19f377b3b086b14e9044c8cc834781a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ThreeRailCoop::CoopController
+  player1: {fileID: 1355571990}
+  player2: {fileID: 1038025129}
+  player1LeftKey: 15
+  player1RightKey: 18
+  player2LeftKey: 61
+  player2RightKey: 62
+  splitKey: 1
+  centerLaneX: 0
+  laneSpacing: 4
+  forwardSpeed: 5
+  moveCooldownSeconds: 0.2
+--- !u!4 &1228076710
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1228076708}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1355571986
 GameObject:
   m_ObjectHideFlags: 0
@@ -886,7 +923,6 @@ GameObject:
   - component: {fileID: 1355571988}
   - component: {fileID: 1355571987}
   - component: {fileID: 1355571991}
-  - component: {fileID: 1355571992}
   m_Layer: 0
   m_Name: Player1
   m_TagString: Untagged
@@ -1016,23 +1052,6 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
---- !u!114 &1355571992
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1355571986}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0fcac2463d5c48c4da848fdb5b11be6f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  moveLeftKey: 15
-  moveRightKey: 18
-  centerLaneX: 0
-  laneSpacing: 4
-  forwardSpeed: 5
 --- !u!1 &1924958128
 GameObject:
   m_ObjectHideFlags: 0
@@ -1155,3 +1174,4 @@ SceneRoots:
   - {fileID: 1038025129}
   - {fileID: 1121258469}
   - {fileID: 658095497}
+  - {fileID: 1228076710}
