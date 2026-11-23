@@ -41,7 +41,7 @@
 
 ## 공통 기반
 
-- [ ] S-000 테스트 기반 구축
+- [x] S-000 테스트 기반 구축
   - 기획 근거: 없음 (D-004 테스트 정책)
   - 완료 기준:
     - `Assets/Scripts`에 게임 코드 asmdef가 있고, 기존 스크립트가 컴파일 오류 없이 빌드된다.
@@ -49,8 +49,8 @@
     - 각 테스트 어셈블리의 샘플 테스트 1개가 Unity CLI로 실행되어 통과한다.
     - 로비 씬과 인게임 씬이 기존처럼 Play 모드에 진입한다.
   - 테스트: EditMode·PlayMode 샘플 테스트 각 1개, 씬 진입 [수동] 확인
-  - 상태: 보고됨
-  - 결과: 2026-11-23 1차 승인(코드 리뷰 단계 도입 전). 자동 2/2 통과(EditMode 1, PlayMode 1), 컴파일 오류 0, 씬 진입 사용자 확인. `ThreeRailCoop` 게임 asmdef와 `Assets/Tests/EditMode`·`PlayMode` 테스트 asmdef 추가. 미커밋 작업이 없는 깨끗한 worktree(커밋 `93ab281`)에서도 `unity test`로 EditMode 1/1, PlayMode 1/1 통과. 코드 리뷰(high) 6건 처리 후 재승인 대기.
+  - 상태: 완료
+  - 결과: 2026-11-23 1차 승인(코드 리뷰 단계 도입 전). 자동 2/2 통과(EditMode 1, PlayMode 1), 컴파일 오류 0, 씬 진입 사용자 확인. `ThreeRailCoop` 게임 asmdef와 `Assets/Tests/EditMode`·`PlayMode` 테스트 asmdef 추가. 미커밋 작업이 없는 깨끗한 worktree(커밋 `93ab281`)에서도 `unity test`로 EditMode 1/1, PlayMode 1/1 통과. 코드 리뷰(high) 6건 처리 후 2026-11-23 재승인. PR #4로 squash 병합.
 
 ## M1. 자동 전진과 레일 이동
 
