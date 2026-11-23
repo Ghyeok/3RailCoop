@@ -274,8 +274,8 @@ Transform:
   m_GameObject: {fileID: 518871202}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -4, y: 0, z: 22}
-  m_LocalScale: {x: 3, y: 0.2, z: 50}
+  m_LocalPosition: {x: -4, y: 0, z: 90}
+  m_LocalScale: {x: 3, y: 0.2, z: 190}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1121258469}
@@ -386,8 +386,8 @@ Transform:
   m_GameObject: {fileID: 539275799}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 4, y: 0, z: 22}
-  m_LocalScale: {x: 3, y: 0.2, z: 50}
+  m_LocalPosition: {x: 4, y: 0, z: 90}
+  m_LocalScale: {x: 3, y: 0.2, z: 190}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1121258469}
@@ -663,6 +663,13 @@ MonoBehaviour:
   laneSpacing: 4
   cycleIntervalSeconds: 1
   patterns:
+  - {fileID: 11400000, guid: 530f6219082f6cf48aa86e7411128922, type: 2}
+  - {fileID: 11400000, guid: 67d349a6f1331cd48bbc50b95827b36a, type: 2}
+  - {fileID: 11400000, guid: 530f6219082f6cf48aa86e7411128922, type: 2}
+  - {fileID: 11400000, guid: bfa948b42c7f27546bc881ea7bde27cf, type: 2}
+  - {fileID: 11400000, guid: 530f6219082f6cf48aa86e7411128922, type: 2}
+  - {fileID: 11400000, guid: 226b6dbcd020fc746ab83659fe48f3e4, type: 2}
+  - {fileID: 11400000, guid: 530f6219082f6cf48aa86e7411128922, type: 2}
   - {fileID: 11400000, guid: a9aefa049aaca364494f5a994c951533, type: 2}
 --- !u!4 &658095497
 Transform:
@@ -1119,7 +1126,7 @@ MonoBehaviour:
   - {fileID: 1355571992}
   - {fileID: 1038025131}
   messageText: {fileID: 689408992}
-  targetDistance: 100
+  targetDistance: 155
   retryKey: 32
 --- !u!4 &1100796273
 Transform:
@@ -1545,8 +1552,8 @@ Transform:
   m_GameObject: {fileID: 1924958128}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 22}
-  m_LocalScale: {x: 3, y: 0.2, z: 50}
+  m_LocalPosition: {x: 0, y: 0, z: 90}
+  m_LocalScale: {x: 3, y: 0.2, z: 190}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1121258469}
