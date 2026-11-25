@@ -211,7 +211,7 @@
       2. A 인자 없이 실행해 방 만들기·초대, B `3RailCoop.exe -s401JoinTimeout 0.01` → 초대 수락 → B 대기방이 열리지 않고 로그 `Steam 로비 참가 응답 시간이 초과되었습니다.`, A의 게스트 슬롯은 빈 채로 남는다.
       3. B `3RailCoop.exe -s401NgoTimeout 0.01` → 초대 수락 → B 로그 `로비 입장 성공!` 뒤 `NGO 연결 대기 시간이 초과되었습니다.`, B는 방 만들기 화면.
   - 상태: 수동 대기
-  - 결과: (2026-11-25 자동 부분 병합) LobbyScene 설정 EditMode 테스트 3개 추가, 회귀 91/91(EditMode 73, PlayMode 18). 코드 리뷰(high) important 0, nit 2(테스트의 씬 닫기 복원·닫기 실패 무시) 반영. 기존 코드 변경 없음. 수동 검증 빌드 `Build/S-401/Normal`·`Timeout`(gitignore) 준비. Steam 미실행 시 무반응은 S-403(D-010)으로 분리. 사용자가 [수동] 검증을 미룸(D-011).
+  - 결과: (2026-11-25 자동 부분 병합) LobbyScene 설정 EditMode 테스트 3개 추가, 회귀 91/91(EditMode 73, PlayMode 18). 코드 리뷰(high) important 0, nit 2(테스트의 씬 닫기 복원·닫기 실패 무시) 반영. 기존 코드 변경 없음. 수동 검증 빌드 `Build/S-401/Normal`·`Timeout`(gitignore) 준비. Steam 미실행 시 무반응은 S-403(D-010)으로 분리. 사용자가 [수동] 검증을 미룸(D-011). 자동 부분은 PR #18로 squash 병합.
 
 - [ ] S-402 NGO 호스트 권한 인게임 동기화
   - 기획 근거: §4 네트워크 입력과 지연 처리

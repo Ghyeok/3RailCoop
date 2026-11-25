@@ -15,7 +15,7 @@
 ## 2. 진행 중인 SPEC 항목
 
 - 없음.
-- `수동 대기`: S-401. 자동 부분 병합 완료. 사용자가 2PC에서 SPEC [수동] 절차(기본 8단계, 시간 초과 3단계)를 수행하면 결과를 반영해 보고(`보고됨`). 빌드 실행 방법은 SPEC S-401 테스트 항목과 아래 6절.
+- `수동 대기`: S-401. 자동 부분 PR #18로 병합. 사용자가 2PC에서 SPEC [수동] 절차(기본 8단계, 시간 초과 3단계)를 수행하면 결과를 반영해 보고(`보고됨`). 빌드 실행 방법은 SPEC S-401 테스트 항목과 아래 6절.
 - 참고: Input System이 Game 뷰 포커스를 요구해, 에디터가 뒤에 있으면 `runtime simulate_key` 입력이 무시된다. Git Bash에서 `/Player1` 같은 hierarchy 경로는 `MSYS_NO_PATHCONV=1`로 전달한다.
 
 ## 3. 완료한 작업과 검증 결과
@@ -29,6 +29,9 @@
 - PR #13: S-302. 상태 전이 순수 C# `StageRun`, `StageController`(충돌 게임 오버, 실제 전진 거리로 클리어, R 재시도, uGUI+TMP 영문 메시지). 충돌은 플레이어 트리거·kinematic Rigidbody·`PlayerHitbox`와 프리팹 `Obstacle` 표시. 목표 거리 기본 100. EditMode 57/57, PlayMode 12/12.
 - PR #14: S-304. 테스트 스테이지 D-008(난이도 1 핵심 패턴 4개 고정 순서, 사이 빈 사이클 3개, 28사이클, 속도 5, 간격 1초, 목표 거리 155), 임시 레일 z=-5~185, 패턴 에셋 유효성 EditMode 테스트. EditMode 63/63, PlayMode 12/12. S-303(설정 오류 시 빈 스테이지 진행 방지) `후보` 추가.
 - PR #15: S-303. 사용자가 기준을 '스테이지 미시작'에서 '유효한 패턴으로 무작위 대체'로 변경(D-009). 순수 C# `ObstaclePatternResolver`, `ObstacleSpawner`가 시도마다 대체·오류 로그, 대체 불가·프리팹/전진 기준 누락 시 로그 후 장애물 없이 진행. EditMode 70/70, PlayMode 18/18.
+- PR #16: D-010(Steam 미실행 시 Create Room에서 자동 실행·30초 대기·자동 진행, 로비 실패 영문 오류 팝업), S-403 `대기` 추가.
+- PR #17: D-011 우선순위 3단계·`수동 대기` 상태(AGENTS.md 반영), S-501·S-601을 동기화만 남기고 로컬 부분 S-502·S-602(`후보`) 분리.
+- PR #18: S-401 자동 부분. EditMode `LobbySceneSetupTests` 3개, 회귀 91/91(EditMode 73, PlayMode 18). 상태 `수동 대기`.
 - 주의: Play 모드에서 TMP 텍스트가 렌더되면 `Assets/Maplestory Bold SDF.asset`(동적 아틀라스)이 바뀐다. 작업과 무관하면 커밋 전에 되돌린다.
 - 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다. PlayMode 실행이 끝나도 `test status`가 `running`에 머물 수 있다. 이때는 Console의 `[TestResultCollector] Run finished` 로그와 `C:/Users/gulww/AppData/LocalLow/DefaultCompany/3RailCoop/TestResults.xml`로 결과를 확인하고 `test cancel`로 정리한다. 컴파일 오류가 있으면 실행이 시작되지 않고 `running`으로 남으므로 `console status`의 `compilationFailed`를 먼저 확인한다.
 - 주의 (병합): `gh pr merge` 뒤 PR 상태가 `MERGED`인지 확인한 다음에 브랜치를 지운다. 병합 전에 원격 브랜치를 지우면 PR이 닫힌다 (PR #9에서 발생, reflog로 복구).
