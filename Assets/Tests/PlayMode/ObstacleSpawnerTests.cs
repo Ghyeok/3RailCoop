@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 
 /// <summary>
 /// 스포너가 패턴의 사이클을 순서대로 생성하고 (S-301), 잘못된 패턴을 유효한 패턴으로 대체하며 (S-303, D-009),
-/// 무작위 모드에서 난이도 비율대로 골라 생성하는지 확인한다 (S-502, D-012, D-013).
+/// 무작위 모드에서 난이도 비율대로 골라 생성하고 (S-502, D-012, D-013), 지나간 장애물을 지우는지 확인한다 (S-305, D-014).
 /// </summary>
 public class ObstacleSpawnerTests
 {
@@ -18,6 +18,7 @@ public class ObstacleSpawnerTests
     private const float SPAWN_DISTANCE = 12f;
     private const float CENTER_LANE_X = 0f;
     private const float LANE_SPACING = 4f;
+    private const float DESPAWN_DISTANCE = 6f;
 
     private readonly List<Object> created = new List<Object>();
     private Random.State randomState;
@@ -199,6 +200,40 @@ public class ObstacleSpawnerTests
         List<Vector3> positions = SpawnedPositions();
         Assert.AreEqual(1, positions.Count);
         Assert.AreEqual(CENTER_LANE_X - LANE_SPACING, positions[0].x, 0.001f);
+    }
+
+    [UnityTest]
+    public IEnumerator Spawner_DestroysPassedObstacles_KeepsOnesAhead()
+    {
+        yield return DespawnsPassedObstaclesOnly(CreateSpawner(new List<int> { 1, 2 }, 0.1f));
+    }
+
+    [UnityTest]
+    public IEnumerator Random_DestroysPassedObstacles_KeepsOnesAhead()
+    {
+        // 패턴 하나(1번 레일)를 2개, 빈 사이클 없이 → 사이클 1, 1.
+        ObstacleSpawner spawner = CreateRandomSpawner(
+            new List<(List<int>, int)> { (new List<int> { 1 }, 1) }, 2, new[] { (1, 100f) }, 0, 0.1f);
+        yield return DespawnsPassedObstaclesOnly(spawner);
+    }
+
+    [UnityTest]
+    public IEnumerator Restart_AfterDespawn_ClearsRemainingAndSpawnsAgain()
+    {
+        // 재시도 직후 한 프레임 안에 다음 사이클이 생성되지 않도록 간격을 길게 둔다.
+        ObstacleSpawner spawner = CreateSpawner(new List<int> { 1, 2 }, 0.5f);
+        yield return DespawnsPassedObstaclesOnly(spawner);
+
+        // 재시도: 기준을 시작 위치로 되돌린 뒤 남은 장애물을 지우고 첫 사이클부터 다시 생성한다.
+        ForwardReference(spawner).position = Vector3.zero;
+        spawner.Restart();
+        yield return null;
+
+        List<Vector3> positions = SpawnedPositions();
+        Assert.AreEqual(1, positions.Count);
+        Assert.AreEqual(CENTER_LANE_X - LANE_SPACING, positions[0].x, 0.001f);
+        Assert.AreEqual(SPAWN_DISTANCE, positions[0].z, 0.001f);
+        Assert.AreEqual(1, ManagedObstacleCount(spawner));
     }
 
     [UnityTest]
@@ -390,6 +425,48 @@ public class ObstacleSpawnerTests
     {
         float end = Time.time + timeoutSeconds;
         while (!condition() && Time.time < end) yield return null;
+    }
+
+    /// <summary>
+    /// 장애물 두 사이클(z=12, z=22)을 생성하고, 기준을 옮겨 첫 장애물만 지워지는지 확인한다. 관리 목록에서도 빠져야 한다.
+    /// </summary>
+    private static IEnumerator DespawnsPassedObstaclesOnly(ObstacleSpawner spawner)
+    {
+        SetField(spawner, "despawnDistanceBehind", DESPAWN_DISTANCE);
+        Transform reference = ForwardReference(spawner);
+        spawner.gameObject.SetActive(true);
+
+        // 첫 사이클은 z=12, 기준을 10으로 옮긴 뒤 두 번째 사이클은 z=22에 생성된다.
+        yield return null;
+        reference.position = new Vector3(0f, 0f, 10f);
+        yield return WaitUntilOrTimeout(() => SpawnedPositions().Count == 2, 2f);
+        Assert.AreEqual(2, SpawnedPositions().Count);
+
+        // 기준보다 아직 덜 지나간 장애물은 남는다.
+        reference.position = new Vector3(0f, 0f, SPAWN_DISTANCE + DESPAWN_DISTANCE - 0.1f);
+        yield return null;
+        yield return null;
+        Assert.AreEqual(2, SpawnedPositions().Count);
+        Assert.AreEqual(2, ManagedObstacleCount(spawner));
+
+        // 첫 장애물(z=12)이 6만큼 뒤가 되면 지워지고, 앞의 장애물(z=22)은 남는다.
+        reference.position = new Vector3(0f, 0f, SPAWN_DISTANCE + DESPAWN_DISTANCE);
+        yield return null;
+        yield return null;
+        List<Vector3> positions = SpawnedPositions();
+        Assert.AreEqual(1, positions.Count);
+        Assert.AreEqual(10f + SPAWN_DISTANCE, positions[0].z, 0.001f);
+        Assert.AreEqual(1, ManagedObstacleCount(spawner));
+    }
+
+    private static int ManagedObstacleCount(ObstacleSpawner spawner)
+    {
+        return ((List<GameObject>)typeof(ObstacleSpawner).GetField("spawnedObstacles", FIELD_FLAGS).GetValue(spawner)).Count;
+    }
+
+    private static Transform ForwardReference(ObstacleSpawner spawner)
+    {
+        return (Transform)typeof(ObstacleSpawner).GetField("forwardReference", FIELD_FLAGS).GetValue(spawner);
     }
 
     private static void SetField(object target, string name, object value)
