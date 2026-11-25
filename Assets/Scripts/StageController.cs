@@ -17,8 +17,10 @@ public class StageController : MonoBehaviour
     [SerializeField] private PlayerHitbox[] playerHitboxes = new PlayerHitbox[0];
     [SerializeField] private TMP_Text messageText;
 
-    [Tooltip("이 거리만큼 전진하면 클리어한다. 마지막 장애물 Z(대략 전체 사이클 수 × 사이클 간격 × 전진 속도 + 생성 거리, 프레임 지연만큼 더 뒤)보다 커야 하므로 패턴·간격·속도를 바꾸면 다시 맞춘다.")]
+    [Tooltip("고정 순서 모드에서 이 거리만큼 전진하면 클리어한다. 무작위 모드는 스포너가 정한 클리어 지점(마지막 장애물 직후)을 쓴다. 마지막 장애물 Z(대략 전체 사이클 수 × 사이클 간격 × 전진 속도 + 생성 거리, 프레임 지연만큼 더 뒤)보다 커야 하므로 패턴·간격·속도를 바꾸면 다시 맞춘다.")]
     [SerializeField, Min(0.01f)] private float targetDistance = 100f;
+    [Tooltip("무작위 모드에서 클리어 지점을 마지막 장애물보다 이만큼 뒤에 둔다.")]
+    [SerializeField, Min(0f)] private float clearMarginAfterLastObstacle = 2f;
     [SerializeField] private Key retryKey = Key.R;
 
     private StageRun run;
@@ -62,6 +64,8 @@ public class StageController : MonoBehaviour
     {
         if (run.IsPlaying)
         {
+            run.SetTargetDistance(GetTargetDistance());
+
             // 플레이어가 실제로 전진한 거리를 기준으로 진행한다.
             run.Advance(coopController.TravelledDistance - run.Distance);
             if (!run.IsPlaying) EndRun();
@@ -85,6 +89,20 @@ public class StageController : MonoBehaviour
         if (cameraController != null) cameraController.ResetToStart();
         if (obstacleSpawner != null) obstacleSpawner.Restart();
         UpdateMessage();
+    }
+
+    /// <summary>
+    /// 고정 순서 모드는 Inspector 목표 거리, 무작위 모드는 마지막 장애물 직후를 클리어 지점으로 쓴다 (D-012).
+    /// 무작위 모드 스포너가 비활성이거나 장애물을 하나도 생성하지 않았으면(설정 오류) Inspector 목표 거리를 쓴다.
+    /// </summary>
+    private float GetTargetDistance()
+    {
+        if (obstacleSpawner == null || !obstacleSpawner.isActiveAndEnabled || !obstacleSpawner.UsesAutoClearDistance) return targetDistance;
+        if (!obstacleSpawner.HasFinishedSpawning) return float.PositiveInfinity;
+
+        return obstacleSpawner.LastObstacleZ is float lastObstacleZ
+            ? StagePatternPlanner.GetClearDistance(coopController.StartZ, lastObstacleZ, clearMarginAfterLastObstacle)
+            : targetDistance;
     }
 
     private void OnHitObstacle()

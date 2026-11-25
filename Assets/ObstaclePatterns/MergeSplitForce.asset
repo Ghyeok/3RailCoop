@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: MergeSplitForce
   m_EditorClassIdentifier: ThreeRailCoop::ObstaclePattern
   cycles: 010000000300000001000000030000000d00000002000000
+  difficulty: 1

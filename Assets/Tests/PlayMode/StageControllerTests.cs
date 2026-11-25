@@ -1,16 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
 /// <summary>
-/// 충돌 → 게임 오버 → 재시도, 목표 거리 클리어의 씬 통합 (S-302).
+/// 충돌 → 게임 오버 → 재시도, 목표 거리 클리어의 씬 통합 (S-302), 무작위 모드의 자동 클리어 지점 (S-502).
 /// </summary>
 public class StageControllerTests
 {
     private const BindingFlags FIELD_FLAGS = BindingFlags.NonPublic | BindingFlags.Instance;
+    private const float CLEAR_MARGIN = 1f;
 
     private readonly List<Object> created = new List<Object>();
     private Transform player1;
@@ -20,6 +22,10 @@ public class StageControllerTests
     [TearDown]
     public void TearDown()
     {
+        // 스포너가 만든 장애물은 created에 없으므로, 테스트가 중간에 실패해도 다음 테스트에 남지 않게 지운다.
+        foreach (Obstacle obstacle in Object.FindObjectsByType<Obstacle>(FindObjectsSortMode.None))
+            Object.Destroy(obstacle.gameObject);
+
         foreach (Object o in created)
         {
             if (o != null) Object.Destroy(o);
@@ -100,6 +106,62 @@ public class StageControllerTests
         Assert.AreEqual(z, player1.position.z, "진행 중 재시도는 위치를 되돌리지 않는다");
     }
 
+    [UnityTest]
+    public IEnumerator RandomMode_ClearsJustAfterLastObstacle_ThenRetryClearsAgain()
+    {
+        // 고정 목표 거리(1000)가 아니라 스포너가 정한 클리어 지점(마지막 장애물 직후)에서 클리어한다 (S-502).
+        StageController stage = CreateStage(1000f);
+        ObstacleSpawner spawner = CreateRandomSpawner(2);
+        SetStageField(stage, "obstacleSpawner", spawner);
+        SetStageField(stage, "clearMarginAfterLastObstacle", CLEAR_MARGIN);
+        spawner.gameObject.SetActive(true);
+
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            yield return WaitUntilOrTimeout(() => stage.State != StageState.Playing, 5f);
+
+            Assert.AreEqual(StageState.Cleared, stage.State);
+            Assert.IsTrue(spawner.LastObstacleZ.HasValue);
+            float clearDistance = spawner.LastObstacleZ.Value - coop.StartZ + CLEAR_MARGIN;
+            Assert.That(coop.TravelledDistance, Is.GreaterThanOrEqualTo(clearDistance));
+            Assert.That(coop.TravelledDistance, Is.LessThanOrEqualTo(clearDistance + coop.ForwardSpeed * Time.maximumDeltaTime),
+                "클리어는 클리어 지점을 넘은 첫 프레임에 일어난다");
+
+            stage.Retry();
+            Assert.AreEqual(StageState.Playing, stage.State);
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator RandomMode_InactiveSpawner_UsesInspectorTargetDistance()
+    {
+        // 무작위 모드 스포너가 비활성이면 클리어 지점이 정해지지 않으므로 Inspector 목표 거리로 클리어한다.
+        StageController stage = CreateStage(1f);
+        SetStageField(stage, "obstacleSpawner", CreateRandomSpawner(2));
+
+        yield return WaitUntilOrTimeout(() => stage.State != StageState.Playing, 2f);
+
+        Assert.AreEqual(StageState.Cleared, stage.State);
+    }
+
+    [UnityTest]
+    public IEnumerator RandomMode_NoObstacles_UsesInspectorTargetDistance()
+    {
+        // 설정 오류로 장애물이 하나도 없으면 생성 거리 직후가 아니라 Inspector 목표 거리에서 클리어한다.
+        StageController stage = CreateStage(6f);
+        ObstacleSpawner spawner = CreateRandomSpawner(0);
+        SetStageField(stage, "obstacleSpawner", spawner);
+        LogAssert.Expect(LogType.Error, new Regex(@"장애물 없음"));
+        LogAssert.Expect(LogType.Error, new Regex(@"난이도 1에 유효한 패턴이 없습니다"));
+        LogAssert.Expect(LogType.Error, new Regex(@"장애물이 있는 유효한 패턴이 없어 장애물 없이 진행합니다"));
+        spawner.gameObject.SetActive(true);
+
+        yield return WaitUntilOrTimeout(() => stage.State != StageState.Playing, 3f);
+
+        Assert.AreEqual(StageState.Cleared, stage.State);
+        Assert.That(coop.TravelledDistance, Is.GreaterThanOrEqualTo(6f));
+    }
+
     private StageController CreateStage(float targetDistance)
     {
         player1 = CreatePlayer("TestPlayer1", -4f);
@@ -154,6 +216,38 @@ public class StageControllerTests
     private CoopLanes GetLanes()
     {
         return (CoopLanes)typeof(CoopController).GetField("lanes", FIELD_FLAGS).GetValue(coop);
+    }
+
+    /// <summary>
+    /// 빈 사이클 1개 뒤 사이클 하나짜리 패턴을 생성하는 무작위 모드 스포너. 2번 레일(가운데)에는 플레이어가 없다.
+    /// </summary>
+    private ObstacleSpawner CreateRandomSpawner(int cycle)
+    {
+        var prefab = new GameObject("TestRandomObstacle");
+        prefab.AddComponent<Obstacle>();
+        var pattern = ScriptableObject.CreateInstance<ObstaclePattern>();
+        typeof(ObstaclePattern).GetField("cycles", FIELD_FLAGS).SetValue(pattern, new List<int> { cycle });
+
+        var spawnerObject = new GameObject("TestRandomSpawner");
+        spawnerObject.SetActive(false);
+        ObstacleSpawner spawner = spawnerObject.AddComponent<ObstacleSpawner>();
+        SetSpawnerField(spawner, "obstaclePrefab", prefab);
+        SetSpawnerField(spawner, "forwardReference", player1);
+        SetSpawnerField(spawner, "spawnDistance", 2f);
+        SetSpawnerField(spawner, "cycleIntervalSeconds", 0.1f);
+        SetSpawnerField(spawner, "patternOrder", ObstacleSpawner.PatternOrder.Random);
+        SetSpawnerField(spawner, "randomPatternPool", new List<ObstaclePattern> { pattern });
+        SetSpawnerField(spawner, "randomPatternCount", 1);
+        SetSpawnerField(spawner, "difficultyShares", new List<ObstacleSpawner.DifficultyShare> { new ObstacleSpawner.DifficultyShare() });
+        SetSpawnerField(spawner, "emptyCyclesBetweenPatterns", 1);
+
+        created.AddRange(new Object[] { prefab, pattern, spawnerObject });
+        return spawner;
+    }
+
+    private static void SetSpawnerField(ObstacleSpawner spawner, string name, object value)
+    {
+        typeof(ObstacleSpawner).GetField(name, FIELD_FLAGS).SetValue(spawner, value);
     }
 
     private static void SetStageField(StageController stage, string name, object value)

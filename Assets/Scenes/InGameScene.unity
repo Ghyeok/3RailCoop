@@ -662,6 +662,7 @@ MonoBehaviour:
   centerLaneX: 0
   laneSpacing: 4
   cycleIntervalSeconds: 1
+  patternOrder: 0
   patterns:
   - {fileID: 11400000, guid: 530f6219082f6cf48aa86e7411128922, type: 2}
   - {fileID: 11400000, guid: 67d349a6f1331cd48bbc50b95827b36a, type: 2}
@@ -671,6 +672,29 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 226b6dbcd020fc746ab83659fe48f3e4, type: 2}
   - {fileID: 11400000, guid: 530f6219082f6cf48aa86e7411128922, type: 2}
   - {fileID: 11400000, guid: a9aefa049aaca364494f5a994c951533, type: 2}
+  randomPatternPool:
+  - {fileID: 11400000, guid: 67d349a6f1331cd48bbc50b95827b36a, type: 2}
+  - {fileID: 11400000, guid: bfa948b42c7f27546bc881ea7bde27cf, type: 2}
+  - {fileID: 11400000, guid: 226b6dbcd020fc746ab83659fe48f3e4, type: 2}
+  - {fileID: 11400000, guid: 9f404879cd134f7b83779ecd8f6d2b4b, type: 2}
+  - {fileID: 11400000, guid: 272811f9a85e4269aa93515a02843047, type: 2}
+  - {fileID: 11400000, guid: a9aefa049aaca364494f5a994c951533, type: 2}
+  - {fileID: 11400000, guid: 0514605a1b29452db4f3d36b3bc57902, type: 2}
+  - {fileID: 11400000, guid: 69c8a35c536b4743a7ee44cbfcc14428, type: 2}
+  - {fileID: 11400000, guid: 9b7cf22f8d464344a539cab859a41abc, type: 2}
+  - {fileID: 11400000, guid: eca03b55e17a4e908470b06a6a079e19, type: 2}
+  - {fileID: 11400000, guid: 5068e99b72e946769c398c3efe39f762, type: 2}
+  - {fileID: 11400000, guid: 661fc41956fc4928875ed954ea290a44, type: 2}
+  - {fileID: 11400000, guid: 527c1c243c674235be21b0a1ee7f7438, type: 2}
+  - {fileID: 11400000, guid: 095b37e91c7644ca9ac7e00a7c886122, type: 2}
+  - {fileID: 11400000, guid: fa392f9c8b61480595e993d30ac77cd9, type: 2}
+  randomPatternCount: 6
+  difficultyShares:
+  - difficulty: 1
+    percent: 70
+  - difficulty: 2
+    percent: 30
+  emptyCyclesBetweenPatterns: 3
 --- !u!4 &658095497
 Transform:
   m_ObjectHideFlags: 0
@@ -1127,6 +1151,7 @@ MonoBehaviour:
   - {fileID: 1038025131}
   messageText: {fileID: 689408992}
   targetDistance: 155
+  clearMarginAfterLastObstacle: 2
   retryKey: 32
 --- !u!4 &1100796273
 Transform:

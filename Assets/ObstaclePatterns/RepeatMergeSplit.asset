@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: RepeatMergeSplit
   m_EditorClassIdentifier: Assembly-CSharp::ObstaclePattern
   cycles: 0d000000020000000d000000020000000d00000002000000
+  difficulty: 1
