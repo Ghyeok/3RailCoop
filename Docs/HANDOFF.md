@@ -32,6 +32,7 @@
 - PR #16: D-010(Steam 미실행 시 Create Room에서 자동 실행·30초 대기·자동 진행, 로비 실패 영문 오류 팝업), S-403 `대기` 추가.
 - PR #17: D-011 우선순위 3단계·`수동 대기` 상태(AGENTS.md 반영), S-501·S-601을 동기화만 남기고 로컬 부분 S-502·S-602(`후보`) 분리.
 - PR #18: S-401 자동 부분. EditMode `LobbySceneSetupTests` 3개, 회귀 91/91(EditMode 73, PlayMode 18). 상태 `수동 대기`.
+- PR #19: D-012(스테이지를 패턴 개수 N과 난이도별 비율로 무작위 구성, 고정 순서 모드 병행, 난이도 1·2 패턴 에셋), S-502 `대기`.
 - 주의: Play 모드에서 TMP 텍스트가 렌더되면 `Assets/Maplestory Bold SDF.asset`(동적 아틀라스)이 바뀐다. 작업과 무관하면 커밋 전에 되돌린다.
 - 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다. PlayMode 실행이 끝나도 `test status`가 `running`에 머물 수 있다. 이때는 Console의 `[TestResultCollector] Run finished` 로그와 `C:/Users/gulww/AppData/LocalLow/DefaultCompany/3RailCoop/TestResults.xml`로 결과를 확인하고 `test cancel`로 정리한다. 컴파일 오류가 있으면 실행이 시작되지 않고 `running`으로 남으므로 `console status`의 `compilationFailed`를 먼저 확인한다.
 - 주의 (병합): `gh pr merge` 뒤 PR 상태가 `MERGED`인지 확인한 다음에 브랜치를 지운다. 병합 전에 원격 브랜치를 지우면 PR이 닫힌다 (PR #9에서 발생, reflog로 복구).
@@ -41,7 +42,7 @@
 
 ## 4. 다음 할 일
 
-1. 다음 항목 S-502(난이도별 무작위 패턴 선택, 로컬, `후보`)를 제안한다. 착수 전에 O-03(스테이지 길이, 등장 간격·전진 속도, 난이도별 조정)과 D-008 고정 테스트 스테이지와의 관계를 사용자와 정하고 완료 기준을 승인받아 `대기`로 바꾼다.
+1. S-502(난이도별 무작위 패턴 선택, 로컬)는 D-012로 완료 기준을 승인받아 `대기`. 사용자가 착수를 지시하면 `spec/S-502`에서 시작한다.
 2. 그다음 S-602(사망·암살 기록 로컬, `후보`): O-02·O-05와 실시간 판정에서의 암살 기준을 정해야 한다.
 3. S-401 수동 결과가 오면 반영. S-403(D-010, `대기`)은 `낮음` 묶음에서 S-401 뒤.
 
