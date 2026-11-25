@@ -9,7 +9,7 @@
 - 목표: MVP 완료 (D-007) 뒤 로컬 플레이 다듬기 우선(D-011). Steam·2PC 항목은 환경이 준비되면 `낮음` 묶음으로 진행.
 - MVP 체크리스트(SPEC): S-101(PR #9)·S-301(PR #10)·S-103(PR #11)·S-203(PR #12)·S-302(PR #13)·S-304(PR #14) 모두 완료. **MVP 완료 (2026-11-23).** 사용자 전체 플레이 8항목 통과.
 - 우선순위(D-011, PR #17): 높음 S-502 → S-602, 보통 S-201 → S-102 → S-202, 낮음 S-401 [수동] → S-403 → S-701 → S-402 → S-501 → S-601 → S-702 → S-703 → S-704. 상태 `수동 대기` 있음.
-- 최신 요청: S-502 수동 확인 통과·병합(PR #21). 사용자가 수동 플레이 중 시야를 벗어난 장애물이 사라지지 않고 남는 현상을 발견 → Destroy와 풀링 중 처리 방식을 논의하기로 함(SPEC 항목 없음, 결정 전).
+- 최신 요청: S-502 병합(PR #21) 후 사용자가 발견한 지나간 장애물 잔류를 Destroy로 정리하기로 결정(D-014, 풀링 전환 여지 O-10) → S-305 병합(PR #23).
 - 사용자가 정한 MVP 값: 이동 쿨타임 기본 0.2초(Inspector 조절), 재시도 키 R, 테스트 스테이지는 난이도 1 핵심 패턴 4개(12→12, 23→23, 1→3→1→3→13→2, 13→2→13→2→13→2, 사이에 빈 사이클, 약 30초). 목표 거리는 마지막 장애물 직후, 속도 5, 사이클 간격 1초.
 - 유지되는 요청: 사용자의 명시적인 요청이 모든 규칙보다 우선한다.
 
@@ -35,9 +35,11 @@
 - PR #18: S-401 자동 부분. EditMode `LobbySceneSetupTests` 3개, 회귀 91/91(EditMode 73, PlayMode 18). 상태 `수동 대기`.
 - PR #19: D-012(스테이지를 패턴 개수 N과 난이도별 비율로 무작위 구성, 고정 순서 모드 병행, 난이도 1·2 패턴 에셋), S-502 `대기`.
 - PR #20: D-013(비율을 준 난이도에 유효한 패턴이 없으면 그 개수를 남은 난이도에 비율대로 재분배).
+- PR #22: D-014(지나간 장애물 Destroy 정리, 생성·삭제를 한 곳으로 모아 풀링 전환 여지), O-10(풀링 전환 기준 미결), S-305 `대기` 추가.
+- PR #23: S-305. 순수 C# `ObstacleDespawn.IsPassed`, `ObstacleSpawner.despawnDistanceBehind`(기본 6, 카메라가 플레이어보다 뒤에 있는 거리). `Update`가 생성 순서 목록 앞에서부터 지나간 장애물을 지움. 생성·삭제는 `SpawnObstacle`·`DespawnObstacle`만 거침(풀링 전환 지점). EditMode 128/128, PlayMode 30/30. 수동 통과.
 - PR #21: S-502. 순수 C# `StagePatternPlanner`(최대 나머지 배분, D-013 2단계 재분배, 반복 허용 선택, 섞기), `ObstaclePattern.difficulty`, 패턴 에셋 15개(난이도 1×10, 2×5). `ObstacleSpawner.patternOrder` Fixed(씬 기본)/Random(후보 15개, N=6, 70/30 미리 입력), 패턴 앞마다 빈 사이클 3개. 무작위 모드 클리어 지점 = 마지막 장애물 Z − Player1 시작 Z + `StageController.clearMarginAfterLastObstacle`(2). EditMode 122/122, PlayMode 28/28. 수동 통과.
 - 주의: Play 모드에서 TMP 텍스트가 렌더되면 `Assets/Maplestory Bold SDF.asset`(동적 아틀라스)이 바뀐다. 작업과 무관하면 커밋 전에 되돌린다.
-- 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다. PlayMode 실행이 끝나도 `test status`가 `running`에 머물 수 있다. 이때는 Console의 `[TestResultCollector] Run finished` 로그와 `C:/Users/gulww/AppData/LocalLow/DefaultCompany/3RailCoop/TestResults.xml`로 결과를 확인하고 `test cancel`로 정리한다. 컴파일 오류가 있으면 실행이 시작되지 않고 `running`으로 남으므로 `console status`의 `compilationFailed`를 먼저 확인한다.
+- 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다. PlayMode 실행이 끝나도 `test status`가 `running`에 머물 수 있다. 이때는 Console의 `[TestResultCollector] Run finished` 로그와 `C:/Users/gulww/AppData/LocalLow/DefaultCompany/3RailCoop/TestResults.xml`로 결과를 확인하고 `test cancel`로 정리한다. 컴파일 오류가 있으면 실행이 시작되지 않고 `running`으로 남으므로 `console status`의 `compilationFailed`를 먼저 확인한다. `--mode all`이면 TestResults.xml에는 마지막 모드(PlayMode) 결과만 남으므로 합계는 `test status`로 확인한다. 실행 뒤 `Assets/InitTestScene*.unity`가 남으면 지운다.
 - 주의 (병합): `gh pr merge` 뒤 PR 상태가 `MERGED`인지 확인한 다음에 브랜치를 지운다. 병합 전에 원격 브랜치를 지우면 PR이 닫힌다 (PR #9에서 발생, reflog로 복구).
 - 주의: worktree를 지울 때 Unity Library 경로가 길어 `git worktree remove`가 실패하면 PowerShell `Remove-Item -LiteralPath '\?\<경로>' -Recurse -Force` 후 `git worktree prune`.
 - 주의: Git Bash `sed -i`는 CRLF를 LF로 바꾼다. 레포 문서는 CRLF이므로 수정 후 줄바꿈을 확인한다.
@@ -45,9 +47,8 @@
 
 ## 4. 다음 할 일
 
-1. 지나간 장애물 정리(Destroy vs 풀링) 논의 → 결정되면 SPEC 항목 추가 제안. 현재 `ObstacleSpawner`는 재시도 때만 `spawnedObstacles`를 Destroy하고, 진행 중에는 지나간 장애물을 지우지 않는다.
-2. 그다음 S-602(사망·암살 기록 로컬, `후보`): O-02·O-05와 실시간 판정에서의 암살 기준을 정해야 한다.
-3. S-401 수동 결과가 오면 반영. S-403(D-010, `대기`)은 `낮음` 묶음에서 S-401 뒤.
+1. 다음은 S-602(사망·암살 기록 로컬, `후보`): O-02·O-05와 실시간 판정에서의 암살 기준을 정해야 한다.
+2. S-401 수동 결과가 오면 반영. S-403(D-010, `대기`)은 `낮음` 묶음에서 S-401 뒤.
 
 ## 5. 열린 질문과 필요한 사용자 응답
 
@@ -57,7 +58,7 @@
 
 ## 6. 작업 트리 상태와 임시 작업
 
-- 현재 브랜치: `main` (S-502 병합 후).
+- 현재 브랜치: `main` (S-305 병합 후).
 - 미커밋 변경: 없음.
 - 주의: 빌드하면 `ProjectSettings/ProjectSettings.asset`의 `preloadedAssets`에 Input System 액션 에셋이 남는다. 작업과 무관하므로 되돌린다.
 - 임시 작업: `Build/S-401/Timeout` 빌드에 시간 초과 검증용 실행 인자(`-s401CreateTimeout`·`-s401JoinTimeout`·`-s401NgoTimeout`) 코드가 들어 있다. 소스(`SteamLobby.cs`)는 빌드 직후 되돌림(확인함). 소멸 조건: S-401 [수동] 검증이 끝나면 `Build/S-401` 폴더 삭제(gitignore 대상). 수동 검증 전에 S-401 대상 코드가 바뀌면 빌드를 다시 만든다.

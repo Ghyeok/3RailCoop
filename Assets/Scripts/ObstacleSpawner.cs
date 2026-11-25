@@ -26,6 +26,8 @@ public class ObstacleSpawner : MonoBehaviour
     [SerializeField] private GameObject obstaclePrefab;
     [SerializeField] private Transform forwardReference;
     [SerializeField] private float spawnDistance = 12f;
+    [Tooltip("전진 기준 오브젝트보다 이 거리 이상 뒤로 지나간 장애물을 지운다. 화면 안에서 사라지지 않도록, 카메라가 기준보다 뒤에 있는 거리 이상으로 둔다.")]
+    [SerializeField, Min(0f)] private float despawnDistanceBehind = 6f;
     [SerializeField] private float centerLaneX;
     [SerializeField, Min(0.01f)] private float laneSpacing = 4f;
     [SerializeField, Min(0.01f)] private float cycleIntervalSeconds = 1f;
@@ -69,6 +71,25 @@ public class ObstacleSpawner : MonoBehaviour
         StartCoroutine(SpawnPatterns());
     }
 
+    private void Update()
+    {
+        if (!canSpawn || forwardReference == null) return;
+
+        // 기준은 앞으로만 가고 재시도 때 목록을 비우므로 목록은 생성 순서(Z 오름차순)다. 앞에서부터 지나간 것만 지운다.
+        float referenceZ = forwardReference.position.z;
+        int passed = 0;
+        while (passed < spawnedObstacles.Count)
+        {
+            GameObject obstacle = spawnedObstacles[passed];
+            if (obstacle != null && !ObstacleDespawn.IsPassed(obstacle.transform.position.z, referenceZ, despawnDistanceBehind)) break;
+
+            if (obstacle != null) DespawnObstacle(obstacle);
+            passed++;
+        }
+
+        spawnedObstacles.RemoveRange(0, passed);
+    }
+
     /// <summary>
     /// 남은 사이클 생성을 멈춘다 (게임 오버·클리어).
     /// </summary>
@@ -86,7 +107,7 @@ public class ObstacleSpawner : MonoBehaviour
 
         foreach (GameObject obstacle in spawnedObstacles)
         {
-            if (obstacle != null) Destroy(obstacle);
+            if (obstacle != null) DespawnObstacle(obstacle);
         }
 
         spawnedObstacles.Clear();
@@ -234,8 +255,14 @@ public class ObstacleSpawner : MonoBehaviour
         return lanesBuffer.Count > 0;
     }
 
+    // 장애물 생성과 삭제는 SpawnObstacle·DespawnObstacle만 거친다. 생성이 늘어 병목이 생기면 이 두 곳을 풀링으로 바꾼다 (D-014, O-10).
     private void SpawnObstacle(float x, float y, float z)
     {
         spawnedObstacles.Add(Instantiate(obstaclePrefab, new Vector3(x, y, z), obstaclePrefab.transform.rotation));
+    }
+
+    private static void DespawnObstacle(GameObject obstacle)
+    {
+        Destroy(obstacle);
     }
 }
