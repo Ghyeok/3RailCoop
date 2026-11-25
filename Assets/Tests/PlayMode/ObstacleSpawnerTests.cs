@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 
 /// <summary>
-/// 스포너가 패턴의 사이클을 순서대로 생성하고, 유효하지 않은 패턴을 거부하는지 확인한다 (S-301).
+/// 스포너가 패턴의 사이클을 순서대로 생성하고 (S-301), 잘못된 패턴을 유효한 패턴으로 대체하는지 확인한다 (S-303, D-009).
 /// </summary>
 public class ObstacleSpawnerTests
 {
@@ -59,14 +59,116 @@ public class ObstacleSpawnerTests
     }
 
     [UnityTest]
-    public IEnumerator Spawner_RejectsFullBlockPattern()
+    public IEnumerator Spawner_ReplacesNullPatternWithValidPattern()
     {
-        ObstacleSpawner spawner = CreateSpawner(new List<int> { 2, 123 }, 0.1f);
-        LogAssert.Expect(LogType.Error, new Regex("유효하지 않은 장애물 사이클: 123"));
+        ObstacleSpawner spawner = CreateSpawner(new List<List<int>> { null, new List<int> { 13 } }, 0.1f);
+        LogAssert.Expect(LogType.Error, new Regex(@"장애물 패턴 설정 오류: 1번째 패턴\(빈 참조\)\. Pattern1\(으\)로 대체"));
+        spawner.gameObject.SetActive(true);
+
+        // 빈 참조 자리에 Pattern1(13)이 생성된다.
+        yield return null;
+        List<Vector3> first = SpawnedPositions();
+        CollectionAssert.AreEquivalent(new[] { CENTER_LANE_X - LANE_SPACING, CENTER_LANE_X + LANE_SPACING }, first.Select(p => p.x));
+
+        // 이어서 원래 Pattern1(13)도 생성된다.
+        yield return new WaitForSeconds(0.15f);
+        Assert.AreEqual(4, SpawnedPositions().Count);
+    }
+
+    [UnityTest]
+    public IEnumerator Spawner_ReplacesInvalidCyclePatternWithPatternThatHasObstacles()
+    {
+        // Pattern0은 전 레일 차단(123)이라 잘못되었고, Pattern1은 빈 패턴이라 후보가 아니다. 후보는 Pattern2(3번 레일)뿐이다.
+        ObstacleSpawner spawner = CreateSpawner(new List<List<int>>
+        {
+            new List<int> { 2, 123 },
+            new List<int> { 0 },
+            new List<int> { 3 },
+        }, 0.1f);
+        LogAssert.Expect(LogType.Error, new Regex(@"1번째 패턴\(Pattern0, 유효하지 않은 사이클 123\)\. Pattern2\(으\)로 대체"));
+        spawner.gameObject.SetActive(true);
+
+        yield return null;
+        List<Vector3> first = SpawnedPositions();
+        Assert.AreEqual(1, first.Count);
+        Assert.AreEqual(CENTER_LANE_X + LANE_SPACING, first[0].x, 0.001f);
+    }
+
+    [UnityTest]
+    public IEnumerator Restart_PicksReplacementAgainEachAttempt()
+    {
+        // 후보가 Pattern1(1번 레일)·Pattern2(3번 레일) 두 개다. 재시도마다 다시 고르면 두 후보가 모두 나온다.
+        Random.InitState(303);
+        ObstacleSpawner spawner = CreateSpawner(new List<List<int>> { null, new List<int> { 1 }, new List<int> { 3 } }, 10f);
+        var firstLaneX = new HashSet<float>();
+
+        LogAssert.Expect(LogType.Error, new Regex(@"1번째 패턴\(빈 참조\)"));
+        spawner.gameObject.SetActive(true);
+        yield return null;
+        firstLaneX.Add(SpawnedPositions().Single().x);
+
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            LogAssert.Expect(LogType.Error, new Regex(@"1번째 패턴\(빈 참조\)"));
+            spawner.Restart();
+            yield return null;
+            firstLaneX.Add(SpawnedPositions().Single().x);
+        }
+
+        CollectionAssert.AreEquivalent(new[] { CENTER_LANE_X - LANE_SPACING, CENTER_LANE_X + LANE_SPACING }, firstLaneX);
+    }
+
+    [UnityTest]
+    public IEnumerator Spawner_NoReplacement_SkipsPatternWithoutStopping()
+    {
+        // 장애물이 있는 유효한 패턴이 없으면 잘못된 자리는 건너뛰고 나머지(빈 패턴)를 계속 진행한다.
+        ObstacleSpawner spawner = CreateSpawner(new List<List<int>> { new List<int> { 2, 123 }, new List<int> { 0, 0 } }, 0.1f);
+        LogAssert.Expect(LogType.Error, new Regex(@"1번째 패턴\(Pattern0, 유효하지 않은 사이클 123\)\. 대체할 패턴이 없어 건너뜁니다"));
+        LogAssert.Expect(LogType.Error, new Regex(@"장애물이 있는 유효한 패턴이 없어 장애물 없이 진행합니다"));
         spawner.gameObject.SetActive(true);
 
         yield return new WaitForSeconds(0.25f);
 
+        Assert.AreEqual(0, SpawnedPositions().Count);
+        Assert.IsTrue(spawner.isActiveAndEnabled);
+    }
+
+    [UnityTest]
+    public IEnumerator Spawner_OnlyEmptyPatterns_LogsAndProceedsWithoutObstacles()
+    {
+        ObstacleSpawner spawner = CreateSpawner(new List<int> { 0, 0 }, 0.1f);
+        LogAssert.Expect(LogType.Error, new Regex(@"장애물이 있는 유효한 패턴이 없어 장애물 없이 진행합니다"));
+        spawner.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(0.25f);
+
+        Assert.AreEqual(0, SpawnedPositions().Count);
+    }
+
+    [UnityTest]
+    public IEnumerator Spawner_MissingPrefab_LogsAndProceedsWithoutObstacles()
+    {
+        return MissingReference_LogsAndProceedsWithoutObstacles("obstaclePrefab");
+    }
+
+    [UnityTest]
+    public IEnumerator Spawner_MissingForwardReference_LogsAndProceedsWithoutObstacles()
+    {
+        return MissingReference_LogsAndProceedsWithoutObstacles("forwardReference");
+    }
+
+    private IEnumerator MissingReference_LogsAndProceedsWithoutObstacles(string field)
+    {
+        ObstacleSpawner spawner = CreateSpawner(new List<int> { 1, 2 }, 0.1f);
+        SetField(spawner, field, null);
+        LogAssert.Expect(LogType.Error, new Regex(@"장애물 프리팹과 전진 기준 오브젝트를 설정해야 합니다\. 장애물 없이 진행합니다"));
+        spawner.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(0.15f);
+
+        // 재시도해도 예외 없이 장애물 없이 진행한다.
+        spawner.Restart();
+        yield return null;
         Assert.AreEqual(0, SpawnedPositions().Count);
     }
 
@@ -103,10 +205,31 @@ public class ObstacleSpawnerTests
 
     private ObstacleSpawner CreateSpawner(List<int> cycles, float interval)
     {
+        return CreateSpawner(new List<List<int>> { cycles }, interval);
+    }
+
+    /// <summary>
+    /// 패턴 목록으로 스포너를 만든다. null 항목은 빈 참조이고, 패턴 이름은 Pattern{인덱스}다.
+    /// </summary>
+    private ObstacleSpawner CreateSpawner(List<List<int>> patternCycles, float interval)
+    {
         var prefab = new GameObject(OBSTACLE_NAME);
         var reference = new GameObject("TestForwardReference");
-        var pattern = ScriptableObject.CreateInstance<ObstaclePattern>();
-        typeof(ObstaclePattern).GetField("cycles", FIELD_FLAGS).SetValue(pattern, cycles);
+        var patterns = new List<ObstaclePattern>();
+        for (int i = 0; i < patternCycles.Count; i++)
+        {
+            if (patternCycles[i] == null)
+            {
+                patterns.Add(null);
+                continue;
+            }
+
+            var pattern = ScriptableObject.CreateInstance<ObstaclePattern>();
+            pattern.name = $"Pattern{i}";
+            typeof(ObstaclePattern).GetField("cycles", FIELD_FLAGS).SetValue(pattern, patternCycles[i]);
+            patterns.Add(pattern);
+            created.Add(pattern);
+        }
 
         var spawnerObject = new GameObject("TestSpawner");
         spawnerObject.SetActive(false);
@@ -117,9 +240,9 @@ public class ObstacleSpawnerTests
         SetField(spawner, "spawnDistance", SPAWN_DISTANCE);
         SetField(spawner, "centerLaneX", CENTER_LANE_X);
         SetField(spawner, "laneSpacing", LANE_SPACING);
-        SetField(spawner, "patterns", new List<ObstaclePattern> { pattern });
+        SetField(spawner, "patterns", patterns);
 
-        created.AddRange(new Object[] { prefab, reference, pattern, spawnerObject });
+        created.AddRange(new Object[] { prefab, reference, spawnerObject });
         return spawner;
     }
 
