@@ -2,13 +2,13 @@
 
 세션이나 컨텍스트가 초기화되어도 작업을 이어가기 위한 스냅샷이다. 매번 덮어쓰며, 이력은 SPEC 결과 필드와 git이 맡는다. 갱신 규칙은 `AGENTS.md`의 'HANDOFF 갱신'을 따른다.
 
-**마지막 갱신:** 2026-11-23
+**마지막 갱신:** 2026-11-25
 
 ## 1. 현재 목표와 최신 요청
 
 - 목표: MVP 완료 (D-007). 1명의 로컬 플레이어가 Steam 없이 두 플레이어를 조작해 테스트 스테이지를 진행하고 게임 오버·재시도·클리어까지 하는 상태. 판정은 실시간.
 - MVP 체크리스트(SPEC): S-101(PR #9)·S-301(PR #10)·S-103(PR #11)·S-203(PR #12)·S-302(PR #13)·S-304(PR #14) 모두 완료. **MVP 완료 (2026-11-23).** 사용자 전체 플레이 8항목 통과.
-- 최신 요청: "MVP 체크리스트 전부를 진행해줘." 항목별로 사용자 승인을 받은 뒤 다음 항목을 자동으로 이어간다. S-103·S-203·S-302의 [수동] 확인은 S-304 전체 플레이 때 한꺼번에 한다.
+- 최신 요청: "다음 작업 진행해줘" → S-303을 기준 변경(D-009) 후 진행·승인·병합(PR #15). 다음 항목은 제안만 하고 사용자 지시를 기다린다.
 - 사용자가 정한 MVP 값: 이동 쿨타임 기본 0.2초(Inspector 조절), 재시도 키 R, 테스트 스테이지는 난이도 1 핵심 패턴 4개(12→12, 23→23, 1→3→1→3→13→2, 13→2→13→2→13→2, 사이에 빈 사이클, 약 30초). 목표 거리는 마지막 장애물 직후, 속도 5, 사이클 간격 1초.
 - 유지되는 요청: 사용자의 명시적인 요청이 모든 규칙보다 우선한다.
 
@@ -27,16 +27,19 @@
 - PR #12: S-203. 합체·분리 순수 C# `CoopLanes`(레일 1~3), 씬에 하나인 `CoopController`가 두 플레이어 입력·전진 속도·위치를 맡음(`PlayerController` 삭제). 카메라는 `forwardSource`로 같은 속도. EditMode 46/46, PlayMode 6/6. 가정: 합체 프레임 분리 입력·분리 프레임 이동 입력은 버림(O-09), 한 기기 Space는 두 플레이어 분리 입력.
 - PR #13: S-302. 상태 전이 순수 C# `StageRun`, `StageController`(충돌 게임 오버, 실제 전진 거리로 클리어, R 재시도, uGUI+TMP 영문 메시지). 충돌은 플레이어 트리거·kinematic Rigidbody·`PlayerHitbox`와 프리팹 `Obstacle` 표시. 목표 거리 기본 100. EditMode 57/57, PlayMode 12/12.
 - PR #14: S-304. 테스트 스테이지 D-008(난이도 1 핵심 패턴 4개 고정 순서, 사이 빈 사이클 3개, 28사이클, 속도 5, 간격 1초, 목표 거리 155), 임시 레일 z=-5~185, 패턴 에셋 유효성 EditMode 테스트. EditMode 63/63, PlayMode 12/12. S-303(설정 오류 시 빈 스테이지 진행 방지) `후보` 추가.
+- PR #15: S-303. 사용자가 기준을 '스테이지 미시작'에서 '유효한 패턴으로 무작위 대체'로 변경(D-009). 순수 C# `ObstaclePatternResolver`, `ObstacleSpawner`가 시도마다 대체·오류 로그, 대체 불가·프리팹/전진 기준 누락 시 로그 후 장애물 없이 진행. EditMode 70/70, PlayMode 18/18.
 - 주의: Play 모드에서 TMP 텍스트가 렌더되면 `Assets/Maplestory Bold SDF.asset`(동적 아틀라스)이 바뀐다. 작업과 무관하면 커밋 전에 되돌린다.
-- 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다.
+- 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다. PlayMode 실행이 끝나도 `test status`가 `running`에 머물 수 있다. 이때는 Console의 `[TestResultCollector] Run finished` 로그와 `C:/Users/gulww/AppData/LocalLow/DefaultCompany/3RailCoop/TestResults.xml`로 결과를 확인하고 `test cancel`로 정리한다. 컴파일 오류가 있으면 실행이 시작되지 않고 `running`으로 남으므로 `console status`의 `compilationFailed`를 먼저 확인한다.
 - 주의 (병합): `gh pr merge` 뒤 PR 상태가 `MERGED`인지 확인한 다음에 브랜치를 지운다. 병합 전에 원격 브랜치를 지우면 PR이 닫힌다 (PR #9에서 발생, reflog로 복구).
 - 주의: worktree를 지울 때 Unity Library 경로가 길어 `git worktree remove`가 실패하면 PowerShell `Remove-Item -LiteralPath '\?\<경로>' -Recurse -Force` 후 `git worktree prune`.
 - 주의: Git Bash `sed -i`는 CRLF를 LF로 바꾼다. 레포 문서는 CRLF이므로 수정 후 줄바꿈을 확인한다.
+- 주의: 사용자가 IDE를 열어 둔 채 작업하므로, IDE 버퍼의 이전 내용이 저장되어 AI 수정이 덮일 수 있다(2026-11-25 발생). 테스트 전 `git diff`로 파일 상태를 확인한다.
 
 ## 4. 다음 할 일
 
-1. 사용자에게 S-303 완료 기준 승인 여부와 착수 순서 위치를 묻는다.
-2. MVP 이후 순서대로 진행: S-401 → S-701 → S-201(틱 판정 구조 논의, O-01·O-04·O-09) → …
+1. 다음 항목 S-401(Steam 로비·NGO 연결 검증, 2PC [수동])을 제안하고 사용자 지시를 기다린다.
+2. 이후 순서: S-701 → S-201(틱 판정 구조 논의, O-01·O-04·O-09) → …
+3. S-303 리뷰의 pre_existing 지적(플레이 중 Inspector에서 패턴을 바꾸면 그 시도의 생성이 중단됨)을 SPEC 항목으로 추가할지 사용자에게 제안한다.
 
 ## 5. 열린 질문과 필요한 사용자 응답
 
@@ -46,6 +49,6 @@
 
 ## 6. 작업 트리 상태와 임시 작업
 
-- 현재 브랜치: `main` (PR #14 병합 후).
-- 미커밋 변경: 없음.
+- 현재 브랜치: `main` (PR #15 병합 후).
+- 미커밋 변경: `Assets/Maplestory Bold SDF.asset`(Play 모드 TMP 아틀라스), `Assets/Scenes/InGameScene.unity`(AI가 수정하지 않음, 사용자 작업으로 보고 보존).
 - 임시 작업: 없음.
