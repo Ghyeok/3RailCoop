@@ -194,9 +194,24 @@
   - 기획 근거: §4 네트워크 입력과 지연 처리, §6 대기방과 스테이지 시작
   - 대상: `SteamBootstrap`, `SteamLobby`, `LobbyPlayer`, `LobbyScene`의 Transport·네트워크 플레이어 프리팹
   - 완료 기준: Steam 로비 생성·초대·참가, 호스트 Steam ID 전달, SteamNetworkingSockets Transport를 통한 NGO 호스트·클라이언트 연결이 동작한다. 생성·참가 시간 초과와 종료 시 정리 흐름이 동작한다. `LobbyPlayer`의 Steam ID와 준비 상태가 양쪽에 동기화된다.
-  - 테스트: [수동] 두 PC와 두 Steam 계정으로 생성 → 초대 → 참가 → 준비 → 나가기. 시간 초과 경로 확인.
-  - 상태: 대기
-  - 결과: —
+  - 테스트:
+    - EditMode `LobbySceneSetupTests`: LobbyScene에 `SteamBootstrap`·`SteamLobby`가 하나씩 있고, NetworkManager Transport가 `SteamNetworkingSocketsTransport`이며, 플레이어 프리팹에 `NetworkObject`·`LobbyPlayer`가 있다.
+    - [수동] 준비: Steam 친구인 두 계정, PC A(호스트)·PC B(게스트). 빌드는 `Build/S-401/Normal`(정상)과 `Build/S-401/Timeout`(시간 초과 검증용 실행 인자 포함). 로그는 `%USERPROFILE%\AppData\LocalLow\DefaultCompany\3RailCoop\Player.log`. 게스트는 초대를 수락하기 전에 게임을 먼저 실행해 둔다(게임이 꺼진 상태의 초대 수락 실행은 처리하지 않는다).
+    - [수동] 기본 흐름 (Normal 빌드)
+      1. 양쪽 실행 → 로그 `스팀 연결 성공!`.
+      2. A 방 만들기 → 대기방, 호스트 슬롯에 A 이름·아바타·Host 배지. 로그 `스팀 로비 생성 성공!`.
+      3. A 초대 → 오버레이(꺼져 있으면 인게임 팝업)로 B 초대.
+      4. B 초대 수락 → B 로그 `로비 입장 성공! 호스트 ID는 : <A의 Steam ID>` → B 대기방. 양쪽 모두 호스트 슬롯 A, 게스트 슬롯 B의 이름·아바타.
+      5. B 준비 → 양쪽 게스트 슬롯 `Ready`. A 준비 → 양쪽 호스트 슬롯 `Ready`. 다시 누르면 양쪽에서 사라진다.
+      6. B 나가기 → B는 방 만들기 화면, A의 게스트 슬롯이 비워진다.
+      7. 다시 초대·참가 → A 나가기 → 양쪽 모두 방 만들기 화면. B 로그 `게스트의 NGO 클라이언트가 종료되었습니다.`
+      8. A가 다시 방 만들기 → 성공(이전 로비·네트워크가 정리됨).
+    - [수동] 시간 초과 (Timeout 빌드, 명령 프롬프트에서 인자와 함께 실행. 로그에 `[S-401 TEMP] <인자> = 0.01`이 찍히는지 확인)
+      1. A `3RailCoop.exe -s401CreateTimeout 0.01` → 방 만들기 → 대기방이 열리지 않고 로그 `Steam 로비 생성 응답 시간이 초과되었습니다.` 뒤 `시간 초과 후 생성된 Steam 로비를 떠났습니다.`
+      2. A 인자 없이 실행해 방 만들기·초대, B `3RailCoop.exe -s401JoinTimeout 0.01` → 초대 수락 → B 대기방이 열리지 않고 로그 `Steam 로비 참가 응답 시간이 초과되었습니다.`, A의 게스트 슬롯은 빈 채로 남는다.
+      3. B `3RailCoop.exe -s401NgoTimeout 0.01` → 초대 수락 → B 로그 `로비 입장 성공!` 뒤 `NGO 연결 대기 시간이 초과되었습니다.`, B는 방 만들기 화면.
+  - 상태: 수동 대기
+  - 결과: (2026-11-25 자동 부분 병합) LobbyScene 설정 EditMode 테스트 3개 추가, 회귀 91/91(EditMode 73, PlayMode 18). 코드 리뷰(high) important 0, nit 2(테스트의 씬 닫기 복원·닫기 실패 무시) 반영. 기존 코드 변경 없음. 수동 검증 빌드 `Build/S-401/Normal`·`Timeout`(gitignore) 준비. Steam 미실행 시 무반응은 S-403(D-010)으로 분리. 사용자가 [수동] 검증을 미룸(D-011). 자동 부분은 PR #18로 squash 병합.
 
 - [ ] S-402 NGO 호스트 권한 인게임 동기화
   - 기획 근거: §4 네트워크 입력과 지연 처리

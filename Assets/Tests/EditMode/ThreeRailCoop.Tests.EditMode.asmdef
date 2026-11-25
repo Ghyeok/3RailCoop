@@ -3,6 +3,8 @@
     "rootNamespace": "",
     "references": [
         "ThreeRailCoop",
+        "Unity.Netcode.Runtime",
+        "SteamNetworkingSockets Transport for Netcode for GameObjects",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

@@ -6,15 +6,16 @@
 
 ## 1. 현재 목표와 최신 요청
 
-- 목표: MVP 완료 (D-007). 1명의 로컬 플레이어가 Steam 없이 두 플레이어를 조작해 테스트 스테이지를 진행하고 게임 오버·재시도·클리어까지 하는 상태. 판정은 실시간.
+- 목표: MVP 완료 (D-007) 뒤 로컬 플레이 다듬기 우선(D-011). Steam·2PC 항목은 환경이 준비되면 `낮음` 묶음으로 진행.
 - MVP 체크리스트(SPEC): S-101(PR #9)·S-301(PR #10)·S-103(PR #11)·S-203(PR #12)·S-302(PR #13)·S-304(PR #14) 모두 완료. **MVP 완료 (2026-11-23).** 사용자 전체 플레이 8항목 통과.
-- 최신 요청: "다음 작업 진행해줘" → S-303을 기준 변경(D-009) 후 진행·승인·병합(PR #15). 다음 항목은 제안만 하고 사용자 지시를 기다린다.
+- 최신 요청: S-401 [수동] 검증을 미루고 SPEC 우선순위를 나눔(grilling) → D-011(PR #17): 높음 S-502 → S-602, 보통 S-201 → S-102 → S-202, 낮음 S-401 [수동] → S-403 → S-701 → S-402 → S-501 → S-601 → S-702 → S-703 → S-704. 새 상태 `수동 대기`. S-401 자동 부분 병합.
 - 사용자가 정한 MVP 값: 이동 쿨타임 기본 0.2초(Inspector 조절), 재시도 키 R, 테스트 스테이지는 난이도 1 핵심 패턴 4개(12→12, 23→23, 1→3→1→3→13→2, 13→2→13→2→13→2, 사이에 빈 사이클, 약 30초). 목표 거리는 마지막 장애물 직후, 속도 5, 사이클 간격 1초.
 - 유지되는 요청: 사용자의 명시적인 요청이 모든 규칙보다 우선한다.
 
 ## 2. 진행 중인 SPEC 항목
 
 - 없음.
+- `수동 대기`: S-401. 자동 부분 PR #18로 병합. 사용자가 2PC에서 SPEC [수동] 절차(기본 8단계, 시간 초과 3단계)를 수행하면 결과를 반영해 보고(`보고됨`). 빌드 실행 방법은 SPEC S-401 테스트 항목과 아래 6절.
 - 참고: Input System이 Game 뷰 포커스를 요구해, 에디터가 뒤에 있으면 `runtime simulate_key` 입력이 무시된다. Git Bash에서 `/Player1` 같은 hierarchy 경로는 `MSYS_NO_PATHCONV=1`로 전달한다.
 
 ## 3. 완료한 작업과 검증 결과
@@ -28,6 +29,9 @@
 - PR #13: S-302. 상태 전이 순수 C# `StageRun`, `StageController`(충돌 게임 오버, 실제 전진 거리로 클리어, R 재시도, uGUI+TMP 영문 메시지). 충돌은 플레이어 트리거·kinematic Rigidbody·`PlayerHitbox`와 프리팹 `Obstacle` 표시. 목표 거리 기본 100. EditMode 57/57, PlayMode 12/12.
 - PR #14: S-304. 테스트 스테이지 D-008(난이도 1 핵심 패턴 4개 고정 순서, 사이 빈 사이클 3개, 28사이클, 속도 5, 간격 1초, 목표 거리 155), 임시 레일 z=-5~185, 패턴 에셋 유효성 EditMode 테스트. EditMode 63/63, PlayMode 12/12. S-303(설정 오류 시 빈 스테이지 진행 방지) `후보` 추가.
 - PR #15: S-303. 사용자가 기준을 '스테이지 미시작'에서 '유효한 패턴으로 무작위 대체'로 변경(D-009). 순수 C# `ObstaclePatternResolver`, `ObstacleSpawner`가 시도마다 대체·오류 로그, 대체 불가·프리팹/전진 기준 누락 시 로그 후 장애물 없이 진행. EditMode 70/70, PlayMode 18/18.
+- PR #16: D-010(Steam 미실행 시 Create Room에서 자동 실행·30초 대기·자동 진행, 로비 실패 영문 오류 팝업), S-403 `대기` 추가.
+- PR #17: D-011 우선순위 3단계·`수동 대기` 상태(AGENTS.md 반영), S-501·S-601을 동기화만 남기고 로컬 부분 S-502·S-602(`후보`) 분리.
+- PR #18: S-401 자동 부분. EditMode `LobbySceneSetupTests` 3개, 회귀 91/91(EditMode 73, PlayMode 18). 상태 `수동 대기`.
 - 주의: Play 모드에서 TMP 텍스트가 렌더되면 `Assets/Maplestory Bold SDF.asset`(동적 아틀라스)이 바뀐다. 작업과 무관하면 커밋 전에 되돌린다.
 - 테스트 실행 방법 (pipeline 1.0.1 기준): 에디터를 열어둔 상태에서 `unity command test run --mode all --async-tests true --project-path C:/Unity/3RailCoop`로 시작하고, `unity command test status`로 결과를 확인한다. 에디터가 닫혀 있거나 다른 경로(worktree)면 `unity test <경로> --mode EditMode|PlayMode`를 쓴다. Editor 명령은 `unity command <group> <name>` 형식이고 매개변수는 kebab-case다. `test status`는 새 실행이 시작되기 전에 조회하면 직전 결과를 돌려주므로, `running`을 확인한 뒤 결과를 읽는다. PlayMode 실행 중에는 Editor 연결이 잠시 끊길 수 있다. PlayMode 실행이 끝나도 `test status`가 `running`에 머물 수 있다. 이때는 Console의 `[TestResultCollector] Run finished` 로그와 `C:/Users/gulww/AppData/LocalLow/DefaultCompany/3RailCoop/TestResults.xml`로 결과를 확인하고 `test cancel`로 정리한다. 컴파일 오류가 있으면 실행이 시작되지 않고 `running`으로 남으므로 `console status`의 `compilationFailed`를 먼저 확인한다.
 - 주의 (병합): `gh pr merge` 뒤 PR 상태가 `MERGED`인지 확인한 다음에 브랜치를 지운다. 병합 전에 원격 브랜치를 지우면 PR이 닫힌다 (PR #9에서 발생, reflog로 복구).
@@ -37,9 +41,9 @@
 
 ## 4. 다음 할 일
 
-1. 다음 항목 S-401(Steam 로비·NGO 연결 검증, 2PC [수동])을 제안하고 사용자 지시를 기다린다.
-2. 이후 순서: S-701 → S-201(틱 판정 구조 논의, O-01·O-04·O-09) → …
-3. S-303 리뷰의 pre_existing 지적(플레이 중 Inspector에서 패턴을 바꾸면 그 시도의 생성이 중단됨)을 SPEC 항목으로 추가할지 사용자에게 제안한다.
+1. 다음 항목 S-502(난이도별 무작위 패턴 선택, 로컬, `후보`)를 제안한다. 착수 전에 O-03(스테이지 길이, 등장 간격·전진 속도, 난이도별 조정)과 D-008 고정 테스트 스테이지와의 관계를 사용자와 정하고 완료 기준을 승인받아 `대기`로 바꾼다.
+2. 그다음 S-602(사망·암살 기록 로컬, `후보`): O-02·O-05와 실시간 판정에서의 암살 기준을 정해야 한다.
+3. S-401 수동 결과가 오면 반영. S-403(D-010, `대기`)은 `낮음` 묶음에서 S-401 뒤.
 
 ## 5. 열린 질문과 필요한 사용자 응답
 
@@ -49,6 +53,7 @@
 
 ## 6. 작업 트리 상태와 임시 작업
 
-- 현재 브랜치: `main` (PR #15 병합 후).
-- 미커밋 변경: `Assets/Maplestory Bold SDF.asset`(Play 모드 TMP 아틀라스), `Assets/Scenes/InGameScene.unity`(AI가 수정하지 않음, 사용자 작업으로 보고 보존).
-- 임시 작업: 없음.
+- 현재 브랜치: `main` (S-401 자동 부분 병합 후).
+- 미커밋 변경: 없음.
+- 주의: 빌드하면 `ProjectSettings/ProjectSettings.asset`의 `preloadedAssets`에 Input System 액션 에셋이 남는다. 작업과 무관하므로 되돌린다.
+- 임시 작업: `Build/S-401/Timeout` 빌드에 시간 초과 검증용 실행 인자(`-s401CreateTimeout`·`-s401JoinTimeout`·`-s401NgoTimeout`) 코드가 들어 있다. 소스(`SteamLobby.cs`)는 빌드 직후 되돌림(확인함). 소멸 조건: S-401 [수동] 검증이 끝나면 `Build/S-401` 폴더 삭제(gitignore 대상). 수동 검증 전에 S-401 대상 코드가 바뀌면 빌드를 다시 만든다.
