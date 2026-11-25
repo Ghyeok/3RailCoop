@@ -13,12 +13,20 @@ public class StageRun
 {
     public StageState State { get; private set; } = StageState.Playing;
     public float Distance { get; private set; }
-    public float TargetDistance { get; }
+    public float TargetDistance { get; private set; }
 
     /// <summary>진행 중일 때만 이동·분리 입력과 전진을 받는다.</summary>
     public bool IsPlaying => State == StageState.Playing;
 
     public StageRun(float targetDistance)
+    {
+        TargetDistance = targetDistance;
+    }
+
+    /// <summary>
+    /// 목표 거리를 바꾼다. 무작위 모드는 마지막 장애물을 생성한 뒤에 클리어 지점이 정해진다 (D-012).
+    /// </summary>
+    public void SetTargetDistance(float targetDistance)
     {
         TargetDistance = targetDistance;
     }

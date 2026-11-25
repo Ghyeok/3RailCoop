@@ -18,6 +18,22 @@ public class StageRunTests
     }
 
     [Test]
+    public void SetTargetDistance_ClearsAtNewTarget()
+    {
+        // 무작위 모드는 클리어 지점이 정해지기 전까지 목표 거리를 무한대로 둔다 (S-502).
+        var run = new StageRun(float.PositiveInfinity);
+        run.Advance(500f);
+        Assert.IsTrue(run.IsPlaying);
+
+        run.SetTargetDistance(510f);
+        run.Advance(9f);
+        Assert.IsTrue(run.IsPlaying);
+        run.Advance(1f);
+
+        Assert.AreEqual(StageState.Cleared, run.State);
+    }
+
+    [Test]
     public void Collision_CausesSharedGameOver()
     {
         var run = new StageRun(TARGET);

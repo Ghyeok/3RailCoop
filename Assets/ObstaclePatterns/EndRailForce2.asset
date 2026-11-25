@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: EndRailForce2
   m_EditorClassIdentifier: ThreeRailCoop::ObstaclePattern
   cycles: 1700000017000000
+  difficulty: 1

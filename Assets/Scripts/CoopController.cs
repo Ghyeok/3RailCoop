@@ -35,6 +35,9 @@ public class CoopController : MonoBehaviour
 
     public float ForwardSpeed => forwardSpeed;
 
+    /// <summary>진행 거리(TravelledDistance)의 기준인 Player1 시작 Z.</summary>
+    public float StartZ => player1StartPosition.z;
+
     /// <summary>시작 위치에서 실제로 전진한 거리. 설정 오류로 시작하지 못했으면 0이다.</summary>
     public float TravelledDistance => lanes == null ? 0f : player1.position.z - player1StartPosition.z;
 
